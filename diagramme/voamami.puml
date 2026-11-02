@@ -1,0 +1,207 @@
+@startuml
+' ============================================================
+' Diagramme global des cas d'utilisation
+' Application web de gestion des VOAMAMI - FID Toliara
+' ============================================================
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam usecase {
+    BackgroundColor #F8FAFC
+    BorderColor #2563EB
+    ArrowColor #475569
+    FontColor #0F172A
+}
+skinparam actor {
+    BackgroundColor #FFFFFF
+    BorderColor #0F172A
+    FontColor #0F172A
+}
+skinparam package {
+    BorderColor #64748B
+    FontColor #0F172A
+    BackgroundColor #FFFFFF
+}
+
+actor "Administrateur" as Admin
+actor "Agent FID" as Agent
+
+rectangle "Application web de gestion des VOAMAMI" {
+
+    package "Authentification et sécurité" {
+        usecase "S'authentifier" as UC_Login
+        usecase "Se déconnecter" as UC_Logout
+        usecase "Consulter son profil" as UC_Profile
+        usecase "Contrôler les droits d'accès" as UC_Access
+    }
+
+    package "Administration" {
+        usecase "Consulter le tableau de bord" as UC_Dashboard
+        usecase "Gérer les utilisateurs" as UC_Users
+        usecase "Créer un compte utilisateur" as UC_CreateUser
+        usecase "Modifier un compte utilisateur" as UC_UpdateUser
+        usecase "Activer ou désactiver un compte" as UC_ActivateUser
+        usecase "Gérer les groupes VOAMAMI" as UC_Voamami
+        usecase "Créer un VOAMAMI" as UC_CreateVoamami
+        usecase "Modifier un VOAMAMI" as UC_UpdateVoamami
+        usecase "Affecter un agent à un VOAMAMI" as UC_AssignAgent
+        usecase "Gérer les AGR" as UC_AGR
+    }
+
+    package "Gestion des membres et des cycles" {
+        usecase "Gérer les membres" as UC_Members
+        usecase "Ajouter un membre" as UC_CreateMember
+        usecase "Modifier un membre" as UC_UpdateMember
+        usecase "Consulter les membres" as UC_ViewMembers
+        usecase "Gérer les cycles" as UC_Cycles
+        usecase "Créer un cycle" as UC_CreateCycle
+        usecase "Ouvrir un cycle" as UC_OpenCycle
+        usecase "Modifier un cycle" as UC_UpdateCycle
+        usecase "Clôturer un cycle" as UC_CloseCycle
+        usecase "Créer les séances" as UC_Sessions
+        usecase "Consulter les séances" as UC_ViewSessions
+    }
+
+    package "Opérations d'une séance" {
+        usecase "Démarrer une séance" as UC_StartSession
+        usecase "Enregistrer les présences" as UC_Attendance
+        usecase "Enregistrer les épargnes" as UC_Savings
+        usecase "Enregistrer un crédit" as UC_Credit
+        usecase "Enregistrer un remboursement" as UC_Repayment
+        usecase "Enregistrer une pénalité" as UC_Penalty
+        usecase "Consulter les opérations de la séance" as UC_ViewOperations
+        usecase "Clôturer une séance" as UC_CloseSession
+    }
+
+    package "Contrôles métier et caisse" {
+        usecase "Vérifier les règles métier" as UC_BusinessRules
+        usecase "Vérifier l'éligibilité au crédit" as UC_CreditEligibility
+        usecase "Calculer les intérêts" as UC_Interest
+        usecase "Enregistrer les mouvements de caisse" as UC_CashFlow
+        usecase "Consulter les mouvements de caisse" as UC_ViewCashFlow
+    }
+
+    package "Rapports et clôture" {
+        usecase "Générer un rapport de séance" as UC_SessionReport
+        usecase "Consulter les rapports" as UC_Reports
+        usecase "Générer le rapport de clôture" as UC_ClosingReport
+        usecase "Calculer le partage des bénéfices" as UC_ProfitSharing
+        usecase "Consulter le partage par membre" as UC_ViewProfitSharing
+    }
+}
+
+' ============================================================
+' Associations de l'administrateur
+' ============================================================
+Admin --> UC_Login
+Admin --> UC_Logout
+Admin --> UC_Profile
+Admin --> UC_Dashboard
+Admin --> UC_Users
+Admin --> UC_Voamami
+Admin --> UC_AGR
+Admin --> UC_Members
+Admin --> UC_Cycles
+Admin --> UC_Sessions
+Admin --> UC_Reports
+Admin --> UC_ViewCashFlow
+Admin --> UC_ViewProfitSharing
+Admin --> UC_CloseCycle
+
+' ============================================================
+' Associations de l'agent FID
+' ============================================================
+Agent --> UC_Login
+Agent --> UC_Logout
+Agent --> UC_Profile
+Agent --> UC_Dashboard
+Agent --> UC_ViewMembers
+Agent --> UC_ViewSessions
+Agent --> UC_StartSession
+Agent --> UC_Attendance
+Agent --> UC_Savings
+Agent --> UC_Credit
+Agent --> UC_Repayment
+Agent --> UC_Penalty
+Agent --> UC_ViewOperations
+Agent --> UC_CloseSession
+Agent --> UC_SessionReport
+Agent --> UC_Reports
+
+' ============================================================
+' Décomposition des fonctionnalités
+' ============================================================
+UC_Users .> UC_CreateUser : <<include>>
+UC_Users .> UC_UpdateUser : <<include>>
+UC_Users .> UC_ActivateUser : <<include>>
+
+UC_Voamami .> UC_CreateVoamami : <<include>>
+UC_Voamami .> UC_UpdateVoamami : <<include>>
+UC_Voamami .> UC_AssignAgent : <<include>>
+
+UC_Members .> UC_CreateMember : <<include>>
+UC_Members .> UC_UpdateMember : <<include>>
+UC_Members .> UC_ViewMembers : <<include>>
+
+UC_Cycles .> UC_CreateCycle : <<include>>
+UC_Cycles .> UC_OpenCycle : <<include>>
+UC_Cycles .> UC_UpdateCycle : <<include>>
+UC_Cycles .> UC_CloseCycle : <<include>>
+
+UC_Sessions .> UC_ViewSessions : <<include>>
+
+UC_StartSession .> UC_ViewOperations : <<include>>
+UC_Attendance .> UC_BusinessRules : <<include>>
+UC_Savings .> UC_BusinessRules : <<include>>
+UC_Credit .> UC_CreditEligibility : <<include>>
+UC_Credit .> UC_BusinessRules : <<include>>
+UC_Repayment .> UC_BusinessRules : <<include>>
+UC_Penalty .> UC_BusinessRules : <<include>>
+
+UC_Savings .> UC_CashFlow : <<include>>
+UC_Credit .> UC_CashFlow : <<include>>
+UC_Repayment .> UC_CashFlow : <<include>>
+UC_Penalty .> UC_CashFlow : <<include>>
+
+UC_SessionReport .> UC_ViewOperations : <<include>>
+UC_ClosingReport .> UC_ProfitSharing : <<include>>
+UC_ProfitSharing .> UC_Interest : <<include>>
+UC_ProfitSharing .> UC_ViewProfitSharing : <<include>>
+
+UC_CloseCycle .> UC_ClosingReport : <<include>>
+UC_CloseSession .> UC_SessionReport : <<include>>
+
+' ============================================================
+' Notes métier
+' ============================================================
+note right of Agent
+  Accès limité aux VOAMAMI
+  qui lui sont affectés.
+  Les opérations sont réalisées
+  dans le contexte d'une séance.
+end note
+
+note right of Admin
+  Accès global à l'application.
+  Peut gérer les utilisateurs,
+  les groupes et les rapports
+  de tous les agents.
+end note
+
+note bottom of UC_CreditEligibility
+  Règles principales :
+  - crédit limité selon l'épargne ;
+  - aucun crédit en cours ;
+  - membre actif ;
+  - cycle et séance ouverts.
+end note
+
+note bottom of UC_ProfitSharing
+  À la clôture du cycle :
+  capital épargné du membre
+  + part des intérêts
+  + part des pénalités encaissées.
+end note
+
+@enduml

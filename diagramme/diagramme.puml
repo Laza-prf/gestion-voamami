@@ -1,0 +1,11 @@
+@startuml
+
+actor Administrateur
+actor "Agent FID" as Agent
+
+Administrateur --> (Gérer les utilisateurs)
+Administrateur --> (Gérer les VOAMAMI)
+Agent --> (Enregistrer une épargne)
+Agent --> (Enregistrer un remboursement)
+
+@enduml
