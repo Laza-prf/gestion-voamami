@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
+
+
+
 const {
     body
 } = require("express-validator");
@@ -25,6 +28,10 @@ const agentVoamamiScope = require(
 );
 const rapportController = require(
     "../controllers/rapport.controller.js"
+);
+
+const caisseSocialeController = require(
+    "../controllers/caisse-sociale.controller.js"
 );
 
 const adminOrAgent = requireRole(
@@ -144,5 +151,18 @@ router.delete(
     agentVoamamiScope,
     seanceController.delete
 );
+
+router.post(
+    "/:seanceId/cotisations-sociales",
+    authMiddleware,
+    caisseSocialeController.createCotisationForSeance
+);
+
+router.get(
+    "/:seanceId/cotisations-sociales",
+    authMiddleware,
+    caisseSocialeController.getCotisationsBySeance
+);
+
 
 module.exports = router;

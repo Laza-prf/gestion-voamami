@@ -5,10 +5,38 @@ import AppLayout from "../components/layouts/AppLayout.vue";
 const routes = [
   { path: "/login", component: () => import("../views/auth/Login.vue") },
   {
+    path: "/mot-de-passe-oublie",
+    name: "mot-de-passe-oublie",
+    component: () =>
+        import("../views/auth/MotDePasseOublie.vue"),
+    meta: {
+        guestOnly: true
+    }
+},
+{
+    path: "/reinitialiser-mot-de-passe",
+    name: "reinitialiser-mot-de-passe",
+    component: () =>
+        import("../views/auth/ReinitialiserMotDePasse.vue"),
+    meta: {
+        guestOnly: true
+    }
+},
+{
+    path: "/changer-mot-de-passe",
+    name: "changer-mot-de-passe",
+    component: () =>
+        import("../views/auth/ChangerMotDePasse.vue"),
+    meta: {
+        requiresAuth: true
+    }
+},
+  {
     path: "/",
     component: AppLayout,
     meta: { requiresAuth: true },
     children: [
+
       { path: "", name: "dashboard", component: () => import("../views/dashboard/Dashboard.vue") },
       { path: "voamami", name: "voamami", component: () => import("../views/voamami/VoamamiList.vue"), meta: { requiresAuth: true, roles: ["ADMINISTRATEUR"] } },
       { path: "voamami/nouveau", name: "voamami-nouveau", component: () => import("../views/voamami/VoamamiForm.vue"), meta: { requiresAuth: true, roles: ["ADMINISTRATEUR"] } },
@@ -183,6 +211,60 @@ const routes = [
     }
 },
 
+
+
+{
+    path: "/caisse-sociale",
+    name: "caisse-sociale",
+    component: () =>
+        import("../views/caisse-sociale/CaisseSocialeList.vue"),
+    meta: {
+        requiresAuth: true,
+        roles: ["ADMINISTRATEUR", "AGENT_FID"]
+    }
+},
+
+{
+    path: "/caisse-sociale/cotisations",
+    name: "cotisations-sociales",
+    component: () =>
+        import("../views/caisse-sociale/CotisationSocialeList.vue"),
+    meta: {
+        requiresAuth: true,
+        roles: ["ADMINISTRATEUR", "AGENT_FID"]
+    }
+},
+{
+    path: "/caisse-sociale/cotisations/nouveau",
+    name: "cotisation-sociale-create",
+    component: () =>
+        import("../views/caisse-sociale/CotisationSocialeForm.vue"),
+    meta: {
+        requiresAuth: true,
+        roles: ["ADMINISTRATEUR", "AGENT_FID"]
+    }
+},
+{
+    path: "/caisse-sociale/aides",
+    name: "aides-sociales",
+    component: () =>
+        import("../views/caisse-sociale/AideSocialeList.vue"),
+    meta: {
+        requiresAuth: true,
+        roles: ["ADMINISTRATEUR", "AGENT_FID"]
+    }
+},
+{
+    path: "/caisse-sociale/aides/nouveau",
+    name: "aide-sociale-create",
+    component: () =>
+        import("../views/caisse-sociale/AideSocialeForm.vue"),
+    meta: {
+        requiresAuth: true,
+        roles: ["ADMINISTRATEUR", "AGENT_FID"]
+    }
+},
+
 {
     path: "rapports",
     name: "rapports",
@@ -196,6 +278,11 @@ const routes = [
             "../views/rapports/RapportSeance.vue"
         )
 },
+
+
+
+
+
 
 
 {

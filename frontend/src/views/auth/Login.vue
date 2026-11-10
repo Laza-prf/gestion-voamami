@@ -2,8 +2,7 @@
     <main class="auth-page">
         <section class="auth-card" aria-labelledby="login-title">
             <div class="auth-brand" aria-label="VOAMAMI">
-                <span class="brand-mark">V</span>
-                <span class="brand-name">VOAMAMI</span>
+                <span class="brand-name"></span>
             </div>
 
             <div class="auth-content">
@@ -11,7 +10,7 @@
                     <p class="eyebrow">Espace sécurisé</p>
                     <h1 id="login-title">Bienvenue</h1>
                     <p>
-                        Connectez-vous pour gérer les opérations d'épargne et de crédit.
+                        Connectez-vous pour gérer les opérations d'épargne et de crédit de VOAMAMI.
                     </p>
                 </div>
 
@@ -23,7 +22,7 @@
                             v-model.trim="email"
                             type="email"
                             autocomplete="email"
-                            placeholder="exemple@voamami.mg"
+                            placeholder="exemple@gmail.com"
                             :disabled="loading"
                             required
                         />
@@ -47,7 +46,7 @@
                             v-model="password"
                             :type="showPassword ? 'text' : 'password'"
                             autocomplete="current-password"
-                            placeholder="Votre mot de passe"
+                            placeholder="Entrez votre mot de passe"
                             :disabled="loading"
                             required
                         />
@@ -57,25 +56,28 @@
                         <span class="error-icon">!</span>
                         <span>{{ error }}</span>
                     </div>
+<button
+    type="submit"
+    class="submit-button"
+    :disabled="loading"
+>
+    <span v-if="loading" class="button-spinner"></span>
+    {{ loading ? "Connexion..." : "Se connecter" }}
+</button>
 
-                    <button
-                        type="submit"
-                        class="submit-button"
-                        :disabled="loading"
-                    >
-                        <span v-if="loading" class="button-spinner"></span>
-                        {{ loading ? "Connexion..." : "Se connecter" }}
-                    </button>
+<router-link
+    to="/mot-de-passe-oublie"
+    class="forgot-password"
+>
+    Mot de passe oublié ?
+</router-link>
+
                 </form>
 
-                <p class="security-note">
-                    Accès réservé aux utilisateurs autorisés.
-                </p>
+                
             </div>
 
-            <footer class="auth-footer">
-                FID Toliara · Gestion des AVEC
-            </footer>
+
         </section>
     </main>
 </template>
@@ -297,6 +299,23 @@ h1 {
     font-size: 0.75rem;
     font-weight: 800;
 }
+
+.forgot-password {
+    display: block;
+    margin-top: 0.85rem;
+    color: #2563eb;
+    font-size: 0.85rem;
+    font-weight: 650;
+    text-align: center;
+    text-decoration: none;
+}
+
+.forgot-password:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+
 
 .submit-button {
     display: inline-flex;

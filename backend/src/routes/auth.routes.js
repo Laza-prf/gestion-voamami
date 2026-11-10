@@ -80,6 +80,22 @@ router.put(
     authController.updatePassword
 );
 
+router.post(
+    "/forgot-password",
+    authController.forgotPassword
+);
+
+router.post(
+    "/reset-password",
+    authController.resetPassword
+);
+
+router.patch(
+    "/change-password",
+    authMiddleware,
+    authController.changePassword
+);
+
 
 module.exports = router;
 

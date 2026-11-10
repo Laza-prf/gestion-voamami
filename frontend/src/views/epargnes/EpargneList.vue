@@ -163,7 +163,7 @@ const deleting = ref(false);
 
 // Filters
 const searchQuery = ref("");
-const filterVoamami = ref(null);
+const filterVoamami = ref(route.query.voamami_id || null);
 const filterSeance = ref(route.query.seance_id || null);
 
 // Filter options

@@ -174,14 +174,29 @@ function wrapConnection(client) {
 const promisePool = {
     async query(sql, params = []) {
         const { statement, isInsert } = prepareQuery(sql);
-        const result = await pgPool.query(statement, normalizeParams(params));
+
+        const result = await pgPool.query(
+            statement,
+            normalizeParams(params)
+        );
+
         return formatResult(result, isInsert);
     },
+
     async getConnection() {
         const client = await pgPool.connect();
+
         return wrapConnection(client);
     },
+
+    // Alias permettant aux modèles d'utiliser promisePool.connect()
+    async connect() {
+        const client = await pgPool.connect();
+
+        return wrapConnection(client);
+    }
 };
+
 
 const testConnection = async () => {
     try {

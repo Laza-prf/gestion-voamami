@@ -119,6 +119,7 @@ const icons = {
     remboursements: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>',
     penalites: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     caisse: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
+    caisse_sociale: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>',
     agr: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
     utilisateurs: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
     rapports: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
@@ -127,8 +128,8 @@ const icons = {
 const sectionGeneral = [
     { label: "Tableau de bord", to: "/", icon: icons.dashboard },
     { label: "VOAMAMI", to: "/voamami", icon: icons.voamami, roles: ["ADMINISTRATEUR"] },
-    { label: "Cycles", to: "/cycles", icon: icons.cycles },
-    { label: "Membres", to: "/membres", icon: icons.membres },
+    { label: "Cycles", to: "/cycles", icon: icons.cycles, roles: ["ADMINISTRATEUR"] },
+    { label: "Membres", to: "/membres", icon: icons.membres , roles: ["ADMINISTRATEUR"] },
     { label: "Séances", to: "/seances", icon: icons.seances }
 ].filter((item) => !item.roles || item.roles.includes(auth.user?.role));
 
@@ -139,7 +140,8 @@ const sectionOperations = [
     { label: "Crédits", to: "/credits", icon: icons.credits },
     { label: "Remboursements", to: "/remboursements", icon: icons.remboursements },
     { label: "Pénalités", to: "/penalites", icon: icons.penalites },
-    { label: "Caisse", to: "/caisse", icon: icons.caisse }
+    { label: "Caisse", to: "/caisse", icon: icons.caisse },
+    { label: "Caisse sociale", to: "/caisse-sociale", icon: icons.caisse_sociale }
 ];
 
 const sectionAdmin = [

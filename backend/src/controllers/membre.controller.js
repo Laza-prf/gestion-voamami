@@ -190,7 +190,7 @@ exports.update = async (req, res, next) => {
                 message: "Identifiant du membre invalide."
             });
         }
-
+               
         const existing = await Membre.findById(id, req.user);
 
         if (!existing) {

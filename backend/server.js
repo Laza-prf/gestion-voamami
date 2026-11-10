@@ -26,6 +26,7 @@ const creditRoutes = require("./src/routes/credit.routes.js");
 const remboursementRoutes = require("./src/routes/remboursement.routes.js");
 const presenceRoutes = require("./src/routes/presence.routes.js");
 const penaliteRoutes = require("./src/routes/penalite.routes.js");
+const caisseSocialeRoutes = require("./src/routes/caisse-sociale.routes.js");
 const mouvementCaisseRoutes = require("./src/routes/mouvement-caisse.routes.js");
 const rapportRoutes = require("./src/routes/rapport.routes.js");
 
@@ -57,6 +58,7 @@ app.use("/api/remboursements", remboursementRoutes);
 app.use("/api/presences", presenceRoutes);
 app.use("/api/penalites", penaliteRoutes);
 app.use("/api/mouvements_caisse", mouvementCaisseRoutes);
+app.use("/api/caisse-sociale", caisseSocialeRoutes);
 app.use("/api/rapports", rapportRoutes);
 
 // Route 404

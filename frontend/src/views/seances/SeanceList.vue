@@ -19,7 +19,7 @@
             </div>
 
             <div class="select-wrapper">
-                <select v-model="filters.voamamiId" class="filter-select" aria-label="Filtrer par VOAMAMI">
+                <select v-model="filterVoamami" class="filter-select" aria-label="Filtrer par VOAMAMI">
                     <option :value="null">Tous les VOAMAMI</option>
                     <option v-for="v in voamamis" :key="v.id" :value="v.id">{{ v.code }} — {{ v.nom }}</option>
                 </select>
