@@ -1,25 +1,69 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
-const requiredConfig = ["DB_USER", "DB_PASSWORD", "DB_NAME"];
-const missingConfig = requiredConfig.filter((key) => !process.env[key]);
+const isProduction = process.env.NODE_ENV === "production";
 
-if (missingConfig.length > 0) {
-    throw new Error(
-        `Configuration PostgreSQL manquante : ${missingConfig.join(", ")}`
+let dbConfig;
+
+if (process.env.DATABASE_URL) {
+    const isRenderDatabase =
+        process.env.DATABASE_URL.includes("render.com");
+
+    dbConfig = {
+        connectionString: process.env.DATABASE_URL,
+
+        // SSL obligatoire pour l'URL externe Render,
+        // même lorsque NODE_ENV=development en local.
+        ssl: isRenderDatabase
+            ? { rejectUnauthorized: false }
+            : false,
+
+        max: Number(process.env.DB_POOL_MAX || 10),
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+    };
+} else {
+    const requiredConfig = [
+        "DB_HOST",
+        "DB_USER",
+        "DB_PASSWORD",
+        "DB_NAME",
+    ];
+
+    const missingConfig = requiredConfig.filter(
+        (key) => !process.env[key]
     );
+
+    if (missingConfig.length > 0) {
+        throw new Error(
+            `Configuration PostgreSQL manquante : ${missingConfig.join(", ")}`
+        );
+    }
+
+    dbConfig = {
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+        port: Number(process.env.DB_PORT || 5432),
+        ssl:
+            process.env.DB_SSL === "true"
+                ? { rejectUnauthorized: false }
+                : false,
+        max: Number(process.env.DB_POOL_MAX || 10),
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+    };
 }
 
-const dbConfig = {
-    host: process.env.DB_HOST || "127.0.0.1",
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: Number(process.env.DB_PORT || 5432),
-    max: 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-};
+console.log("Configuration PostgreSQL :", {
+    mode: process.env.DATABASE_URL
+        ? "DATABASE_URL"
+        : "paramètres séparés",
+    database: dbConfig.database || "défini par DATABASE_URL",
+    user: dbConfig.user || "défini par DATABASE_URL",
+    ssl: Boolean(dbConfig.ssl),
+});
 
 const pgPool = new Pool(dbConfig);
 
