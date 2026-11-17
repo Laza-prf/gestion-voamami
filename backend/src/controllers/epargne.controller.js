@@ -204,6 +204,53 @@ exports.findById = async (req, res, next) => {
     }
 };
 
+exports.update = async (req, res, next) => {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) {
+        return res.status(422).json({
+            success: false,
+            message: "Identifiant d'épargne invalide."
+        });
+    }
+
+    const nombre_parts = Number(req.body.nombre_parts);
+    if (!Number.isInteger(nombre_parts) || nombre_parts < 1 || nombre_parts > 5) {
+        return res.status(422).json({
+            success: false,
+            message: "Le nombre de parts doit être compris entre 1 et 5."
+        });
+    }
+
+    try {
+        const epargne = await Epargne.update(
+            id,
+            { nombre_parts },
+            req.user
+        );
+        if (!epargne) {
+            return res.status(404).json({
+                success: false,
+                message: "Épargne introuvable."
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "Épargne modifiée avec succès.",
+            data: epargne
+        });
+    } catch (error) {
+        console.error("Erreur modification épargne :", error);
+        if (["SEANCE_CLOSED", "CYCLE_NOT_OPEN"].includes(error.code)) {
+            return res.status(422).json({
+                success: false,
+                message: error.message
+            });
+        }
+        return next(error);
+    }
+};
+
 exports.delete = async (req, res, next) => {
     try {
         const deleted =

@@ -2,11 +2,17 @@
     <main class="page">
         <section class="card" aria-labelledby="change-title">
             <div class="page-header">
-                <router-link to="/" class="back-link">
-                    ← Retour au tableau de bord
-                </router-link>
-                <p class="eyebrow">Sécurité du compte</p>
-                <h1 id="change-title">Modifier mon mot de passe</h1>
+                <div class="header-title">
+                    <router-link
+                        to="/"
+                        class="back-link"
+                        aria-label="Retour"
+                        title="Retour"
+                    >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    </router-link>
+                    <h1 id="change-title">Modifier mon mot de passe</h1>
+                </div>
                 <p class="description">
                     Utilisez cette page pour remplacer votre mot de passe
                     actuel par un nouveau mot de passe sécurisé.
@@ -208,17 +214,30 @@ async function submit() {
     margin-bottom: 1.5rem;
 }
 
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
 .back-link {
-    display: inline-block;
-    margin-bottom: 1.5rem;
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dbe3ee;
+    border-radius: 0.7rem;
+    background: #f8fafc;
     color: #2563eb;
-    font-size: 0.85rem;
-    font-weight: 650;
     text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
 }
 
 .back-link:hover {
-    text-decoration: underline;
+    border-color: #bfdbfe;
+    background: #eff6ff;
 }
 
 .eyebrow {
@@ -233,10 +252,12 @@ async function submit() {
 h1 {
     margin: 0;
     color: #0f172a;
-    font-size: clamp(1.6rem, 4vw, 2.1rem);
+    font-size: clamp(1.35rem, 4vw, 2.1rem);
+    line-height: 1.2;
 }
 
 .description {
+    margin: 0.75rem 0 0;
     color: #64748b;
     line-height: 1.6;
 }

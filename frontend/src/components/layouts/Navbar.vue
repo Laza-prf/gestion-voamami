@@ -50,7 +50,7 @@
                 <!-- Notifications dropdown -->
                 <div v-if="notifOpen" class="dropdown notif-dropdown">
                     <div class="dropdown-header">
-                        <span>Crédits à rembourser</span>
+                        <span>Crédits à rembourser ({{ notifications.length }})</span>
                         <button v-if="unreadCount > 0" class="btn-mark-read" @click="markAllRead">Tout marquer lu</button>
                     </div>
                     <div class="dropdown-divider"></div>
@@ -80,7 +80,7 @@
                                 <span class="notif-detail">{{ n.detail }}</span>
                                 <span class="notif-time">{{ n.dueLabel }}</span>
                             </div>
-                            <span :class="['notif-status', { overdue: n.overdue }]">{{ n.overdue ? "En retard" : "En cours" }}</span>
+                            <span :class="['notif-status', { overdue: n.overdue }]">{{ n.overdue ? "En retard" : "À payer" }}</span>
                         </div>
                     </div>
                 </div>
@@ -97,16 +97,39 @@
             </button>
 
             <!-- User dropdown -->
-            <div v-if="userOpen" id="user-menu" class="dropdown user-dropdown" @click.away="userOpen = false">
-                <div class="dropdown-header">
-                    <span class="dropdown-name">{{ auth.user?.nom }} {{ auth.user?.prenom }}</span>
-                    <span class="dropdown-email">{{ auth.user?.email }}</span>
+            <div v-if="userOpen" id="user-menu" class="dropdown user-dropdown">
+                <div class="profile-heading">
+                    <div class="profile-avatar">{{ initials }}</div>
+                    <div>
+                        <strong>Mon profil</strong>
+                        <span class="profile-role">{{ roleLabel }}</span>
+                    </div>
                 </div>
                 <div class="dropdown-divider"></div>
-                <router-link to="/changer-mot-de-passe">
-    Modifier mon mot de passe
-</router-link>
-                <button class="dropdown-item" @click="logout">
+                <dl class="profile-details">
+                    <div class="profile-detail">
+                        <dt>Nom</dt>
+                        <dd>{{ auth.user?.nom || "—" }}</dd>
+                    </div>
+                    <div class="profile-detail">
+                        <dt>Prénom</dt>
+                        <dd>{{ auth.user?.prenom || "—" }}</dd>
+                    </div>
+                    <div class="profile-detail">
+                        <dt>E-mail</dt>
+                        <dd>{{ auth.user?.email || "—" }}</dd>
+                    </div>
+                </dl>
+                <div class="dropdown-divider"></div>
+                <router-link
+                    to="/changer-mot-de-passe"
+                    class="dropdown-item profile-action"
+                    @click="userOpen = false"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Modifier le mot de passe
+                </router-link>
+                <button class="dropdown-item profile-logout" @click="logout">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     Déconnexion
                 </button>
@@ -203,6 +226,7 @@ const isDark = ref(document.documentElement.classList.contains("dark"));
 const notificationLoading = ref(false);
 const notificationError = ref("");
 const notifications = ref([]);
+const notificationRefreshRequested = ref(false);
 let notificationRefreshTimer;
 const creditIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>';
 
@@ -228,7 +252,8 @@ const titles = {
     caisse: "Caisse",
     agr: "AGR",
     utilisateurs: "Utilisateurs",
-    rapports: "Rapports"
+    rapports: "Rapports",
+    "changer-mot-de-passe": "Sécurité du compte"
 };
 const pageTitle = computed(() => {
     const key = route.path.split("/").filter(Boolean)[0] || "";
@@ -306,7 +331,10 @@ function formatDueDate(value) {
 }
 
 async function loadNotifications() {
-    if (notificationLoading.value) return;
+    if (notificationLoading.value) {
+        notificationRefreshRequested.value = true;
+        return;
+    }
     notificationLoading.value = true;
     notificationError.value = "";
     try {
@@ -350,6 +378,10 @@ async function loadNotifications() {
         console.error("Erreur de chargement des notifications de crédit :", error);
     } finally {
         notificationLoading.value = false;
+        if (notificationRefreshRequested.value) {
+            notificationRefreshRequested.value = false;
+            queueMicrotask(loadNotifications);
+        }
     }
 }
 
@@ -376,6 +408,15 @@ function onDocumentClick(event) {
     if (!notifWrapper.value?.contains(event.target)) notifOpen.value = false;
     if (!event.target.closest(".user-info, .user-dropdown")) userOpen.value = false;
 }
+
+function refreshNotificationsWhenVisible() {
+    if (document.visibilityState === "visible") loadNotifications();
+}
+
+function onCreditsUpdated() {
+    loadNotifications();
+}
+
 // ===== Global Search =====
 const searchItems = [
     { label: "Tableau de bord", to: "/", section: "Général", icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>' },
@@ -425,6 +466,9 @@ function onKeydown(e) {
 onMounted(() => {
     document.addEventListener("click", onDocumentClick);
     document.addEventListener("keydown", onKeydown);
+    document.addEventListener("visibilitychange", refreshNotificationsWhenVisible);
+    window.addEventListener("focus", refreshNotificationsWhenVisible);
+    window.addEventListener("voamami-credits-updated", onCreditsUpdated);
     loadNotifications();
     notificationRefreshTimer = window.setInterval(loadNotifications, 60_000);
 });
@@ -432,6 +476,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
     document.removeEventListener("click", onDocumentClick);
     document.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("visibilitychange", refreshNotificationsWhenVisible);
+    window.removeEventListener("focus", refreshNotificationsWhenVisible);
+    window.removeEventListener("voamami-credits-updated", onCreditsUpdated);
     window.clearInterval(notificationRefreshTimer);
 });
 </script>
@@ -633,7 +680,65 @@ onBeforeUnmount(() => {
 }
 
 .notif-wrapper { position: relative; }
-.user-dropdown { width: 220px; padding: 0.5rem; }
+.user-dropdown { width: min(320px, calc(100vw - 1rem)); padding: 0.65rem; }
+
+.profile-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.35rem 0.4rem 0.7rem;
+    color: #1e293b;
+}
+.dark .profile-heading { color: #f1f5f9; }
+.profile-avatar {
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+.dark .profile-avatar { background: #1e3a5f; color: #bfdbfe; }
+.profile-heading > div:last-child {
+    display: grid;
+    gap: 0.15rem;
+}
+.profile-role {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.dark .profile-role { color: #94a3b8; }
+.profile-details {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0.7rem 0.4rem;
+}
+.profile-detail {
+    display: grid;
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.profile-detail dt {
+    color: #64748b;
+    font-size: 0.75rem;
+}
+.dark .profile-detail dt { color: #94a3b8; }
+.profile-detail dd {
+    min-width: 0;
+    margin: 0;
+    color: #1e293b;
+    font-size: 0.82rem;
+    font-weight: 550;
+    overflow-wrap: anywhere;
+}
+.dark .profile-detail dd { color: #e2e8f0; }
 
 .dropdown-header {
     display: flex;
@@ -676,6 +781,16 @@ onBeforeUnmount(() => {
 .dropdown-item:hover { background: #fef2f2; }
 .dark .dropdown-item { color: #f87171; }
 .dark .dropdown-item:hover { background: #450a0a; }
+.dropdown-item.profile-action {
+    color: #334155;
+    text-decoration: none;
+}
+.dropdown-item.profile-action:hover { background: #f1f5f9; }
+.dark .dropdown-item.profile-action { color: #e2e8f0; }
+.dark .dropdown-item.profile-action:hover { background: #334155; }
+.profile-logout {
+    margin-top: 0.15rem;
+}
 
 /* ===== Notifications dropdown ===== */
 .notif-dropdown {

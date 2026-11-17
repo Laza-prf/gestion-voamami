@@ -204,6 +204,7 @@ static async createMany(seance_id, entries) {
 
                 c.numero_cycle,
 
+                v.id AS voamami_id,
                 v.code AS voamami_code,
                 v.nom AS voamami_nom
 
@@ -295,6 +296,136 @@ static async createMany(seance_id, entries) {
             await connection.query(sql, params);
 
         return rows[0] || null;
+    }
+
+    static async update(id, data, user) {
+        const connection = await promisePool.getConnection();
+        let transactionStarted = false;
+        try {
+            await connection.beginTransaction();
+            transactionStarted = true;
+
+            const [rows] = await connection.query(`
+                SELECT
+                    e.id,
+                    e.cycle_id,
+                    e.seance_id,
+                    e.membre_id,
+                    e.montant_part,
+                    e.date_epargne,
+                    s.statut AS seance_statut,
+                    c.statut AS cycle_statut,
+                    v.agent_responsable_id
+                FROM epargnes e
+                INNER JOIN seances s ON s.id = e.seance_id
+                INNER JOIN cycles c ON c.id = e.cycle_id
+                INNER JOIN membres m ON m.id = e.membre_id
+                INNER JOIN voamami v ON v.id = c.voamami_id
+                WHERE e.id = ?
+                FOR UPDATE OF e, s, c, m
+            `, [id]);
+            const existing = rows[0];
+            if (!existing || (user?.role === "AGENT_FID" &&
+                Number(existing.agent_responsable_id) !== Number(user.id))) {
+                await connection.commit();
+                transactionStarted = false;
+                return null;
+            }
+            if (existing.seance_statut !== "OUVERTE") {
+                const error = new Error("La séance est déjà clôturée.");
+                error.code = "SEANCE_CLOSED";
+                throw error;
+            }
+            if (existing.cycle_statut !== "OUVERT") {
+                const error = new Error("Le cycle doit être ouvert.");
+                error.code = "CYCLE_NOT_OPEN";
+                throw error;
+            }
+
+            const [epargneResult] = await connection.query(
+                "UPDATE epargnes SET nombre_parts = ?, montant_total = montant_part * ? WHERE id = ? RETURNING montant_total",
+                [data.nombre_parts, data.nombre_parts, id]
+            );
+            const montantTotal = epargneResult.rows[0].montant_total;
+            const [movementResult] = await connection.query(
+                "UPDATE mouvements_caisse SET montant = ? WHERE epargne_id = ? AND type_mouvement = 'EPARGNE' AND sens = 'ENTREE'",
+                [montantTotal, id]
+            );
+            if (movementResult.affectedRows === 0) {
+                await connection.query(`
+                    INSERT INTO mouvements_caisse
+                        (cycle_id, seance_id, membre_id, type_mouvement, montant, sens, epargne_id, description, date_mouvement)
+                    VALUES (?, ?, ?, 'EPARGNE', ?, 'ENTREE', ?, 'Dépôt d’épargne du membre', ?)
+                `, [
+                    existing.cycle_id,
+                    existing.seance_id,
+                    existing.membre_id,
+                    montantTotal,
+                    id,
+                    existing.date_epargne
+                ]);
+            }
+
+            const [totals] = await connection.query(`
+                SELECT
+                    COALESCE(SUM(nombre_parts), 0) AS parts_cumulees,
+                    COALESCE(SUM(montant_total), 0) AS solde_epargne,
+                    COALESCE(SUM(CASE WHEN seance_id = ? THEN montant_total ELSE 0 END), 0) AS epargne_seance
+                FROM epargnes
+                WHERE cycle_id = ? AND membre_id = ?
+            `, [existing.seance_id, existing.cycle_id, existing.membre_id]);
+            const totalsRow = totals[0];
+            await connection.query(
+                "UPDATE membres SET solde_epargne = ? WHERE id = ?",
+                [totalsRow.solde_epargne, existing.membre_id]
+            );
+            await connection.query(`
+                UPDATE soldes_epargne_seance ses
+                SET parts_cumulees = ?,
+                    epargne_seance = (
+                        SELECT COALESCE(SUM(e.montant_total), 0)
+                        FROM epargnes e
+                        WHERE e.cycle_id = ses.cycle_id
+                            AND e.seance_id = ses.seance_id
+                            AND e.membre_id = ses.membre_id
+                    ),
+                    solde_epargne = ?
+                WHERE ses.cycle_id = ? AND ses.membre_id = ?
+            `, [
+                totalsRow.parts_cumulees,
+                totalsRow.solde_epargne,
+                existing.cycle_id,
+                existing.membre_id
+            ]);
+            await connection.query(`
+                INSERT INTO soldes_epargne_seance
+                    (cycle_id, seance_id, membre_id, parts_cumulees, epargne_seance, solde_epargne)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT (seance_id, membre_id) DO UPDATE SET
+                    parts_cumulees = EXCLUDED.parts_cumulees,
+                    epargne_seance = EXCLUDED.epargne_seance,
+                    solde_epargne = EXCLUDED.solde_epargne
+            `, [
+                existing.cycle_id,
+                existing.seance_id,
+                existing.membre_id,
+                totalsRow.parts_cumulees,
+                totalsRow.epargne_seance,
+                totalsRow.solde_epargne
+            ]);
+
+            const updated = await Epargne.findById(id, connection, user);
+            await connection.commit();
+            transactionStarted = false;
+            return updated;
+        } catch (error) {
+            if (transactionStarted) {
+                await connection.rollback();
+            }
+            throw error;
+        } finally {
+            connection.release();
+        }
     }
 
     static async delete(id) {

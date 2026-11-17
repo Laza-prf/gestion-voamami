@@ -36,8 +36,8 @@
 
             <div class="filter-group">
                 <div class="select-wrapper">
-                    <select v-model="filterVoamami" class="filter-select" aria-label="Filtrer par VOAMAMI">
-                        <option :value="null">Tous les VOAMAMI</option>
+                    <select v-model="filterVoamami" class="filter-select" :disabled="isAgentFid" aria-label="Filtrer par VOAMAMI">
+                        <option v-if="!isAgentFid" :value="null">Tous les VOAMAMI</option>
                         <option v-for="v in voamamis" :key="v.id" :value="v.id">{{ v.code }}</option>
                     </select>
                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -118,8 +118,10 @@ import { useRoute } from "vue-router";
 import remboursementService from "../../service/remboursement.service.js";
 import voamamiService from "../../service/voamami.service.js";
 import seanceService from "../../service/seance.service.js";
+import { useAssignedVoamami } from "../../composables/useAssignedVoamami.js";
 
 const route = useRoute();
+const { isAgentFid, assignedVoamamiId } = useAssignedVoamami();
 const returnLink = computed(() => {
     const seanceId = route.query.seance_id;
     if (route.query.assistant !== "1" || typeof seanceId !== "string") {
@@ -128,7 +130,7 @@ const returnLink = computed(() => {
     return {
         path: `/seances/${seanceId}/operations`,
         query: {
-            etape: "5",
+            etape: "6",
             ...(typeof route.query.verifie === "string"
                 ? { verifie: route.query.verifie }
                 : {})
@@ -179,7 +181,7 @@ const filteredItems = computed(() => {
 
 function resetFilters() {
     searchQuery.value = "";
-    filterVoamami.value = null;
+    if (!isAgentFid.value) filterVoamami.value = null;
     filterSeance.value = null;
 }
 
@@ -209,6 +211,9 @@ async function load() {
         ]);
         items.value = remRes.data.data ?? [];
         voamamis.value = voaRes.data.data ?? [];
+        if (isAgentFid.value) {
+            filterVoamami.value = assignedVoamamiId(voamamis.value);
+        }
         seances.value = (seaRes.data.data ?? seaRes.data.seances ?? []).slice(0, 50);
     } catch (e) {
         error.value = e.response?.data?.message || "Erreur de chargement.";

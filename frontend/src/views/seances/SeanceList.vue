@@ -12,15 +12,25 @@
         </div>
 
         <!-- Toolbar: recherche + filtres -->
-        <div class="toolbar">
+        <div class="toolbar filter-card">
             <div class="search-wrapper">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input v-model="searchQuery" type="text" placeholder="Rechercher un code, une séance…" class="search-input" />
             </div>
 
+            <label class="month-filter">
+                <span>Mois</span>
+                <input
+                    v-model="filters.month"
+                    type="month"
+                    class="filter-select month-input"
+                    aria-label="Rechercher les séances par mois"
+                />
+            </label>
+
             <div class="select-wrapper">
-                <select v-model="filterVoamami" class="filter-select" aria-label="Filtrer par VOAMAMI">
-                    <option :value="null">Tous les VOAMAMI</option>
+                <select v-model="filters.voamamiId" class="filter-select" :disabled="isAgentFid" aria-label="Filtrer par VOAMAMI">
+                    <option v-if="!isAgentFid" :value="null">Tous les VOAMAMI</option>
                     <option v-for="v in voamamis" :key="v.id" :value="v.id">{{ v.code }} — {{ v.nom }}</option>
                 </select>
                 <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -72,8 +82,11 @@
         <!-- Empty -->
         <div v-else-if="filteredSeances.length === 0" class="state-block">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="16" x2="15" y2="16"/></svg>
-            <p>{{ searchQuery ? "Aucune séance ne correspond à votre recherche." : "Aucune séance enregistrée." }}</p>
-            <router-link v-if="!searchQuery" to="/seances/nouveau" class="btn-primary">Créer la première séance</router-link>
+            <p>{{ seances.length === 0 ? "Aucune séance enregistrée." : "Aucune séance ne correspond à ces critères." }}</p>
+            <button v-if="hasActiveFilters" type="button" class="btn-secondary" @click="resetFilters">
+                Réinitialiser les filtres
+            </button>
+            <router-link v-else to="/seances/nouveau" class="btn-primary">Créer la première séance</router-link>
         </div>
 
         <!-- Liste -->
@@ -89,7 +102,12 @@
                 <span></span>
             </div>
 
-            <div v-for="seance in filteredSeances" :key="seance.id" class="row-card">
+            <div
+                v-for="seance in filteredSeances"
+                :key="seance.id"
+                class="row-card"
+                :class="{ 'menu-open': openMenuId === seance.id }"
+            >
                 <div class="cell cell-voamami" data-label="VOAMAMI">
                     <code class="code-badge">{{ seance.voamami_code || "—" }}</code>
                     <span class="voamami-nom">{{ seance.voamami_nom || "—" }}</span>
@@ -206,8 +224,10 @@ import { ref, computed, onMounted, reactive, watch } from "vue";
 import seanceService from "../../service/seance.service.js";
 import voamamiService from "../../service/voamami.service.js";
 import { useToast } from "../../composables/useToast.js";
+import { useAssignedVoamami } from "../../composables/useAssignedVoamami.js";
 
 const toast = useToast();
+const { isAgentFid, assignedVoamamiId } = useAssignedVoamami();
 const seances = ref([]);
 const voamamis = ref([]);
 const loading = ref(true);
@@ -221,7 +241,8 @@ const savingConfirmation = ref(false);
 
 const filters = reactive({
     voamamiId: null,
-    statut: ""
+    statut: "",
+    month: ""
 });
 
 // Fermer le menu au clic extérieur
@@ -237,7 +258,27 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 function toggleMenu(id) { openMenuId.value = openMenuId.value === id ? null : id; }
 function closeMenu() { openMenuId.value = null; }
 
-// Liste filtrée (recherche + VOAMAMI + statut)
+function monthKey(value) {
+    if (!value) return "";
+    if (typeof value === "string" && /^\d{4}-\d{2}/.test(value)) {
+        return value.slice(0, 7);
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+const hasActiveFilters = computed(() =>
+    Boolean(
+        searchQuery.value.trim() ||
+        filters.month ||
+        filters.statut ||
+        (!isAgentFid.value && filters.voamamiId)
+    )
+);
+
+// Liste filtrée (recherche + VOAMAMI + statut + mois)
 const filteredSeances = computed(() => {
     let list = seances.value;
 
@@ -247,6 +288,10 @@ const filteredSeances = computed(() => {
 
     if (filters.statut) {
         list = list.filter((s) => s.statut === filters.statut);
+    }
+
+    if (filters.month) {
+        list = list.filter((s) => monthKey(s.date_seance) === filters.month);
     }
 
     if (searchQuery.value.trim()) {
@@ -260,6 +305,13 @@ const filteredSeances = computed(() => {
 
     return list;
 });
+
+function resetFilters() {
+    searchQuery.value = "";
+    filters.month = "";
+    filters.statut = "";
+    if (!isAgentFid.value) filters.voamamiId = null;
+}
 
 // Stats calculées sur la liste filtrée
 const stats = computed(() => {
@@ -303,6 +355,9 @@ async function loadSeances() {
         ]);
         seances.value = seancesRes.data.data ?? seancesRes.data.seances ?? [];
         voamamis.value = voamamisRes.data.data ?? [];
+        if (isAgentFid.value) {
+            filters.voamamiId = assignedVoamamiId(voamamis.value);
+        }
     } catch (e) {
         error.value = e.response?.data?.message || "Impossible de charger les séances.";
     } finally {
@@ -365,7 +420,7 @@ onMounted(loadSeances);
 </script>
 
 <style scoped>
-.page { max-width: 1200px; margin: 0 auto; padding: 1.5rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; }
+.page { max-width: 1200px; margin: 0 auto; padding: 1.5rem; font-family: inherit; color: #1e293b; }
 
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
 .page-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; color: #0f172a; }
@@ -384,15 +439,24 @@ onMounted(loadSeances);
 
 /* ===== Toolbar ===== */
 .toolbar { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.search-wrapper { position: relative; flex: 1; min-width: 200px; display: flex; align-items: center; }
+.filter-card {
+    align-items: center;
+    padding: 0.85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.85rem;
+    background: #fff;
+}
+.search-wrapper { position: relative; flex: 1 1 260px; min-width: 0; display: flex; align-items: center; }
 .search-wrapper svg { position: absolute; left: 0.75rem; color: #94a3b8; }
 .search-input { width: 100%; padding: 0.55rem 0.75rem 0.55rem 2.3rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; }
 .search-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
 
-.select-wrapper { position: relative; display: inline-flex; }
+.select-wrapper { position: relative; display: inline-flex; flex: 1 1 180px; min-width: 0; }
 .select-arrow { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: #64748b; }
-.filter-select { padding: 0.55rem 2rem 0.55rem 0.75rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.82rem; color: #475569; background: #fff; cursor: pointer; appearance: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.filter-select { width: 100%; min-width: 0; padding: 0.55rem 2rem 0.55rem 0.75rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.82rem; color: #475569; background: #fff; cursor: pointer; appearance: none; transition: border-color 0.15s, box-shadow 0.15s; }
 .filter-select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.month-filter { display: grid; flex: 1 1 160px; min-width: 0; gap: 0.2rem; color: #64748b; font-size: 0.7rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+.month-input { color: #475569; text-transform: none; letter-spacing: normal; }
 
 /* ===== States ===== */
 .state-block { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 1rem; text-align: center; color: #64748b; gap: 0.75rem; }
@@ -401,7 +465,7 @@ onMounted(loadSeances);
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ===== Liste ===== */
-.list-wrapper { border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; overflow: visible; }
+.list-wrapper { border: 1px solid var(--voa-border); border-radius: 10px; background: var(--voa-surface); overflow: visible; }
 
 .list-head {
     display: grid;
@@ -508,15 +572,29 @@ onMounted(loadSeances);
 .modal-enter-from .confirm-dialog, .modal-leave-to .confirm-dialog { transform: translateY(.75rem) scale(.97); }
 
 /* ===== Responsive ===== */
-@media (max-width: 860px) {
+@media (max-width: 1100px) {
     .stats-row { grid-template-columns: repeat(2, 1fr); }
     .list-head { display: none; }
+    .list-wrapper {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+        gap: 0.75rem;
+        border: 0;
+        background: transparent;
+    }
     .row-card {
-        grid-template-columns: 1fr;
-        gap: 0.4rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem 0.8rem;
         padding: 1rem;
         position: relative;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.85rem;
+        background: #fff;
+        box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
     }
+    .row-card:last-child { border-bottom: 1px solid #e2e8f0; }
+    .row-card.menu-open { z-index: 2; }
+    .cell-voamami { grid-column: 1 / -1; padding-right: 2rem; }
     .cell::before {
         content: attr(data-label);
         display: block;
@@ -529,5 +607,28 @@ onMounted(loadSeances);
     }
     .cell-menu { position: absolute; top: 0.75rem; right: 0.75rem; }
     .text-right, .text-center { text-align: left; }
+    .toolbar { align-items: stretch; }
 }
-</style>   
+
+@media (max-width: 600px) {
+    .page { padding: 1rem; }
+    .page-header { align-items: stretch; flex-direction: column; }
+    .page-header > .btn-primary { width: 100%; justify-content: center; }
+    .filter-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+    .search-wrapper { grid-column: 1 / -1; }
+    .month-filter { grid-column: 1 / -1; }
+    .stats-row { gap: 0.5rem; }
+    .stat-card { min-width: 0; padding: 0.75rem; }
+    .stat-value { overflow-wrap: anywhere; font-size: 1.1rem; }
+    .row-card { grid-template-columns: minmax(0, 1fr); }
+    .cell-voamami { grid-column: auto; }
+    .cell-menu { top: 0.65rem; right: 0.65rem; }
+    .confirm-dialog { padding: 1.1rem; }
+    .confirm-actions { flex-direction: column-reverse; }
+    .confirm-actions button { width: 100%; }
+}
+
+:global(html.dark .page .row-card:hover) {
+    background: #1d2a3d;
+}
+</style>

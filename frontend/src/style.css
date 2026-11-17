@@ -21,6 +21,9 @@
     --voa-success: #059669;
     --voa-danger: #dc2626;
     --voa-warning: #d97706;
+    --voa-chart-text: #334155;
+    --voa-chart-muted: #64748b;
+    --voa-chart-grid: #e2e8f0;
     --type-page-title: clamp(1.5rem, 2vw, 1.75rem);
     --type-section-title: 1.25rem;
     --type-card-title: 1.0625rem;
@@ -956,6 +959,35 @@ a {
         flex-basis: 100%;
     }
 
+    #app .app-content :is(.toolbar, .filters, .filters-card, .filter-group, .select-wrapper) {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #app .app-content .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    #app .app-content .filter-group > * {
+        flex: 1 1 160px;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #app .app-content :is(.filter-select, .filters select) {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #app .app-content .filters > * {
+        min-width: 0;
+        max-width: 100%;
+    }
+
     #app .app-content .form-actions {
         align-items: stretch;
         flex-direction: column;
@@ -996,6 +1028,9 @@ html.dark {
     --voa-muted: #9aa8bb;
     --voa-primary: #60a5fa;
     --voa-primary-dark: #3b82f6;
+    --voa-chart-text: #cbd5e1;
+    --voa-chart-muted: #9aa8bb;
+    --voa-chart-grid: #334155;
 }
 
 html.dark body,
@@ -1300,4 +1335,152 @@ html.dark .toast-close:hover {
         transition: background-color 160ms ease, color 160ms ease,
             border-color 160ms ease;
     }
+}
+
+/* Keep bespoke page components in sync with the shared dark palette. */
+html.dark #app .app-content :is(.app-layout, .app-content, .page, .dashboard) {
+    background-color: var(--voa-bg);
+    color: var(--voa-text);
+}
+
+html.dark #app .app-content .page :is(
+    .table-container,
+    .table-scroll,
+    .filter-panel,
+    .filters-panel,
+    .info-block,
+    .detail-card,
+    .result-card,
+    .empty-state,
+    [class*="card"],
+    [class*="panel"],
+    [class*="surface"]
+) {
+    background-color: var(--voa-surface);
+    border-color: var(--voa-border);
+    color: var(--voa-text);
+}
+
+html.dark #app .app-content .page :is(
+    .filters,
+    .filter-bar,
+    .table-toolbar,
+    .pagination,
+    .table-header
+) {
+    background-color: #111a29;
+    border-color: var(--voa-border);
+    color: var(--voa-text);
+}
+
+html.dark #app .app-content .page :is(
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea
+) {
+    background-color: #111a29;
+    border-color: #3b4960;
+    color: var(--voa-text);
+}
+
+html.dark #app .app-content .page :is(
+    .description,
+    .helper-text,
+    .empty,
+    .empty-state,
+    .readonly-label,
+    .summary,
+    .context-label,
+    .field-hint,
+    .subtitle,
+    .muted,
+    .td-muted
+) {
+    color: var(--voa-muted);
+}
+
+html.dark #app .app-content .page :is(
+    .secondary-button,
+    .cancel-button,
+    .button-secondary,
+    .button-link,
+    .btn-secondary,
+    .btn-ghost
+) {
+    background-color: #1b2637;
+    border-color: var(--voa-border);
+    color: #cbd5e1;
+}
+
+html.dark #app .app-content .page :is(
+    .secondary-button,
+    .cancel-button,
+    .button-secondary,
+    .button-link,
+    .btn-secondary,
+    .btn-ghost
+):hover:not(:disabled) {
+    background-color: #263449;
+    color: #f8fafc;
+}
+
+html.dark #app .app-content .page :is(table, thead, tbody, tr, th, td) {
+    border-color: var(--voa-border);
+}
+
+html.dark #app .app-content .page :is(table, tbody tr) {
+    background-color: var(--voa-surface);
+}
+
+html.dark #app .app-content .page :is(thead, th) {
+    background-color: #111a29;
+    color: #cbd5e1;
+}
+
+html.dark #app .app-content .page :is(td, label, .text-dark) {
+    color: var(--voa-text);
+}
+
+html.dark #app .app-content .page tbody tr:hover {
+    background-color: #1d2a3d;
+}
+
+html.dark #app :is(.auth-page) {
+    background:
+        radial-gradient(circle at 15% 10%, rgb(30 58 138 / 0.35), transparent 34%),
+        radial-gradient(circle at 90% 85%, rgb(49 46 129 / 0.3), transparent 36%),
+        var(--voa-bg);
+    color: var(--voa-text);
+}
+
+html.dark #app :is(.auth-card, .auth-content) {
+    background-color: var(--voa-surface);
+    border-color: var(--voa-border);
+    color: var(--voa-text);
+}
+
+html.dark #app :is(.auth-heading h1, .auth-heading p, .auth-content h1, .field label) {
+    color: var(--voa-text);
+}
+
+html.dark #app :is(.auth-heading p:last-child, .password-rules) {
+    color: var(--voa-muted);
+}
+
+html.dark #app .auth-page :is(input, select, textarea) {
+    background-color: #111a29;
+    border-color: #3b4960;
+    color: var(--voa-text);
+}
+
+html.dark #app .auth-page :is(.secondary-button, .cancel-button) {
+    background-color: #1b2637;
+    border-color: var(--voa-border);
+    color: #cbd5e1;
+}
+
+html.dark :is(.modal-card, .modal-content, .dialog-card, .dialog-content) {
+    background-color: var(--voa-surface);
+    border-color: var(--voa-border);
+    color: var(--voa-text);
 }

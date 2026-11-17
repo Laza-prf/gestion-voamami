@@ -2,11 +2,8 @@
     <section class="page">
         <header class="page-header">
             <div>
-                <router-link
-                    :to="backUrl"
-                    class="back-link"
-                >
-                    ← Retour à l’assistant
+                <router-link :to="backUrl" class="back-link">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </router-link>
 
                 <p class="eyebrow">Assistant des opérations</p>
@@ -22,7 +19,7 @@
             Chargement du contexte de la séance…
         </div>
 
-        <div v-else-if="error" class="state-card error-box">
+        <div v-else-if="error" class="state-card error-box" role="alert">
             <p>{{ error }}</p>
             <button
                 type="button"
@@ -33,7 +30,7 @@
             </button>
         </div>
 
-        <template v-else>
+        <template v-else-if="seance">
             <section class="context-card">
                 <div>
                     <span class="context-label">VOAMAMI</span>
@@ -58,18 +55,18 @@
                     <span
                         :class="[
                             'status-badge',
-                            seance.statut === 'OUVERTE'
+                            isSessionOpen
                                 ? 'status-open'
                                 : 'status-closed'
                         ]"
                     >
-                        {{ seance.statut }}
+                        {{ seance.statut || "INCONNU" }}
                     </span>
                 </div>
             </section>
 
             <form
-                v-if="seance.statut === 'OUVERTE'"
+                v-if="isSessionOpen"
                 class="form-card"
                 @submit.prevent="submit"
             >
@@ -78,6 +75,7 @@
                     <select
                         v-model="form.membre_id"
                         required
+                        :disabled="saving || membres.length === 0"
                     >
                         <option value="">
                             Sélectionner un membre
@@ -85,10 +83,10 @@
                         <option
                             v-for="membre in membres"
                             :key="membre.id"
-                            :value="membre.id"
+                            :value="String(membre.id)"
                         >
-                            N°{{ membre.numero_membre }} —
-                            {{ membre.nom }}
+                            N°{{ membre.numero_membre || "—" }} —
+                            {{ membre.nom || "" }}
                             {{ membre.prenom || "" }}
                         </option>
                     </select>
@@ -100,6 +98,7 @@
                         v-model="form.mois_concerne"
                         type="month"
                         required
+                        :disabled="saving"
                     />
                 </label>
 
@@ -111,6 +110,7 @@
                         min="1"
                         step="1"
                         required
+                        :disabled="saving"
                     />
                 </label>
 
@@ -126,26 +126,36 @@
                         v-model.trim="form.observation"
                         rows="3"
                         maxlength="500"
+                        :disabled="saving"
                         placeholder="Observation sur le versement…"
                     ></textarea>
                 </label>
 
-                <p v-if="formError" class="error-box">
+                <p v-if="formError" class="error-box" role="alert">
                     {{ formError }}
+                </p>
+
+                <p
+                    v-if="!membres.length"
+                    class="warning-box"
+                >
+                    Aucun membre actif n’est disponible pour cette séance.
                 </p>
 
                 <div class="form-actions">
                     <button
                         type="button"
                         class="button secondary"
+                        :disabled="saving"
                         @click="goBack"
                     >
                         Annuler
                     </button>
+
                     <button
                         type="submit"
                         class="button primary"
-                        :disabled="saving || !membres.length"
+                        :disabled="saving || membres.length === 0"
                     >
                         {{ saving ? "Enregistrement…" : "Enregistrer" }}
                     </button>
@@ -161,14 +171,16 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useToast } from "../../composables/useToast.js";
 import seanceService from "../../service/seance.service.js";
 import membreService from "../../service/membre.service.js";
 import caisseSocialeService from "../../service/caisse-sociale.service.js";
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 
 const seance = ref(null);
 const membres = ref([]);
@@ -189,85 +201,202 @@ const form = reactive({
     observation: ""
 });
 
-const seanceId = Number(route.query.seance_id) || null;
-const isAssistant = route.query.assistant === "1";
+/*
+ * Le composant peut être ouvert depuis :
+ * /seances/:seanceId/cotisations-sociales
+ * ou depuis l’assistant avec ?seance_id=27.
+ */
+const seanceId = computed(() => {
+    const routeValue =
+        route.params.seanceId ??
+        route.params.id ??
+        route.query.seance_id;
 
-const backUrl = seanceId
-    ? `/seances/${seanceId}/operations`
-    : "/caisse-sociale";
+    const id = Number(routeValue);
+    return Number.isInteger(id) && id > 0 ? id : null;
+});
 
-function extractRows(response) {
+const backUrl = computed(() =>
+    seanceId.value
+        ? `/seances/${seanceId.value}/operations?etape=2`
+        : "/caisse-sociale"
+);
+const successUrl = computed(() =>
+    route.query.assistant === "1" && seanceId.value
+        ? `/seances/${seanceId.value}/operations?etape=3`
+        : backUrl.value
+);
+
+const isSessionOpen = computed(() => {
+    const statut = String(
+        seance.value?.statut || ""
+    ).toUpperCase();
+
+    return statut === "OUVERTE" || statut === "OUVERT";
+});
+
+function extractRows(response, keys = []) {
     const payload = response?.data;
 
-    if (!payload) return [];
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload.data)) return payload.data;
-    if (Array.isArray(payload.rows)) return payload.rows;
-    if (Array.isArray(payload.membres)) return payload.membres;
-    if (Array.isArray(payload.seances)) return payload.seances;
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    const data = payload?.data ?? payload;
+
+    if (Array.isArray(data)) {
+        return data;
+    }
+
+    if (data && typeof data === "object") {
+        for (const key of keys) {
+            if (Array.isArray(data[key])) {
+                return data[key];
+            }
+        }
+    }
 
     return [];
 }
 
-function extractObject(response) {
+function extractObject(response, keys = []) {
     const payload = response?.data;
     const data = payload?.data ?? payload;
 
     if (Array.isArray(data)) {
-        return data[0] || null;
+        return data[0] ?? null;
     }
 
-    if (data?.seance) {
-        return data.seance;
+    if (!data || typeof data !== "object") {
+        return null;
     }
 
-    return data && typeof data === "object" ? data : null;
+    for (const key of keys) {
+        if (data[key] && typeof data[key] === "object") {
+            return data[key];
+        }
+    }
+
+    return data;
+}
+
+function isActiveMember(membre) {
+    return (
+        membre?.actif === 1 ||
+        membre?.actif === true ||
+        membre?.actif === "1"
+    );
 }
 
 function formatDate(value) {
-    if (!value) return "Date non renseignée";
+    if (!value) {
+        return "Date non renseignée";
+    }
 
-    return new Date(value).toLocaleDateString("fr-FR");
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return String(value).slice(0, 10);
+    }
+
+    return date.toLocaleDateString("fr-FR");
+}
+
+function getServerMessage(errorObject, fallback) {
+    const responseData = errorObject?.response?.data;
+    const validationErrors = responseData?.errors;
+
+    if (Array.isArray(validationErrors)) {
+        const firstError = validationErrors.find(Boolean);
+
+        if (typeof firstError === "string") {
+            return firstError;
+        }
+
+        if (firstError?.msg) {
+            return firstError.msg;
+        }
+
+        if (firstError?.message) {
+            return firstError.message;
+        }
+    }
+
+    return (
+        responseData?.message ||
+        responseData?.error ||
+        errorObject?.message ||
+        fallback
+    );
 }
 
 async function loadContext() {
     loading.value = true;
     error.value = "";
+    formError.value = "";
+    seance.value = null;
+    membres.value = [];
 
     try {
-        if (!seanceId) {
+        if (!seanceId.value) {
             throw new Error(
-                "La cotisation doit être ouverte depuis une séance."
+                "La cotisation doit être ouverte depuis une séance valide."
             );
         }
 
         const seanceResponse =
-            await seanceService.getById(seanceId);
+            await seanceService.getById(seanceId.value);
 
-        seance.value = extractObject(seanceResponse);
+        const loadedSeance = extractObject(
+            seanceResponse,
+            ["seance"]
+        );
 
-        if (!seance.value?.id) {
+        if (!loadedSeance?.id) {
             throw new Error("Séance introuvable.");
         }
 
-        if (!seance.value.voamami_id) {
+        if (!loadedSeance.voamami_id) {
             throw new Error(
                 "La séance ne contient pas de VOAMAMI."
             );
         }
 
-        const membreResponse = await membreService.getAll({
-            voamami_id: seance.value.voamami_id,
-            actif: 1
+        seance.value = loadedSeance;
+
+        let membreResponse;
+
+        try {
+            membreResponse = await membreService.getAll({
+                voamami_id: loadedSeance.voamami_id,
+                actif: 1
+            });
+        } catch (firstError) {
+            // Compatibilité avec un service getAll() qui n’accepte pas de filtre.
+            console.warn(
+                "Le filtrage des membres par paramètres a échoué ; repli sur getAll().",
+                firstError
+            );
+            membreResponse = await membreService.getAll();
+        }
+
+        const rows = extractRows(membreResponse, [
+            "membres",
+            "members",
+            "rows"
+        ]);
+
+        membres.value = rows.filter((membre) => {
+            const sameVoamami =
+                Number(membre.voamami_id) ===
+                Number(loadedSeance.voamami_id);
+
+            return sameVoamami && isActiveMember(membre);
         });
 
-        membres.value = extractRows(membreResponse).filter(
-            (membre) => membre.actif === undefined || Boolean(membre.actif)
-        );
-
-        if (!membres.value.length) {
+        if (membres.value.length === 0) {
             error.value =
-                "Aucun membre actif n'est disponible pour cette séance.";
+                "Aucun membre actif n’est disponible pour cette séance.";
         }
     } catch (err) {
         console.error(
@@ -275,68 +404,148 @@ async function loadContext() {
             err
         );
 
-        error.value =
-            err.response?.data?.message ||
-            err.message ||
-            "Impossible de charger le contexte de la séance.";
+        error.value = getServerMessage(
+            err,
+            "Impossible de charger le contexte de la séance."
+        );
     } finally {
         loading.value = false;
     }
 }
 
 function goBack() {
-    router.push(backUrl);
+    router.push(backUrl.value);
+}
+
+function validateForm() {
+    if (!seanceId.value) {
+        return "La séance est introuvable.";
+    }
+
+    if (!seance.value?.id) {
+        return "Le contexte de la séance est introuvable.";
+    }
+
+    if (!isSessionOpen.value) {
+        return "Cette séance est clôturée.";
+    }
+
+    if (!form.membre_id) {
+        return "Veuillez sélectionner un membre.";
+    }
+
+    const memberExists = membres.value.some(
+        (membre) =>
+            Number(membre.id) === Number(form.membre_id)
+    );
+
+    if (!memberExists) {
+        return "Le membre sélectionné n’est pas disponible dans ce VOAMAMI.";
+    }
+
+    if (!/^\d{4}-\d{2}$/.test(form.mois_concerne)) {
+        return "Veuillez sélectionner un mois valide.";
+    }
+
+    const montant = Number(form.montant);
+
+    if (!Number.isFinite(montant) || montant <= 0) {
+        return "Le montant doit être un nombre supérieur à zéro.";
+    }
+
+    if (montant % 1 !== 0) {
+        return "Le montant doit être un nombre entier en Ariary.";
+    }
+
+    return "";
 }
 
 async function submit() {
     formError.value = "";
 
-    if (!seance.value?.id) {
-        formError.value = "Séance introuvable.";
-        return;
-    }
+    const validationMessage = validateForm();
 
-    if (!form.membre_id) {
-        formError.value = "Veuillez sélectionner un membre.";
-        return;
-    }
-
-    if (!form.montant || Number(form.montant) <= 0) {
-        formError.value = "Le montant doit être supérieur à zéro.";
+    if (validationMessage) {
+        formError.value = validationMessage;
+        toast.error(validationMessage);
         return;
     }
 
     saving.value = true;
 
+    const payload = {
+        seance_id: seanceId.value,
+        membre_id: Number(form.membre_id),
+        mois_concerne: form.mois_concerne,
+        montant: Number(form.montant),
+        observation: form.observation?.trim() || null
+    };
+
+    console.log(
+        "POST cotisation sociale :",
+        `/seances/${seanceId.value}/cotisations-sociales`
+    );
+
+   console.log(
+    "Payload cotisation sociale détaillé :",
+    JSON.stringify(payload, null, 2)
+);
+
+
     try {
-        await caisseSocialeService.createCotisationForSeance(
-            seance.value.id,
-            {
-                membre_id: Number(form.membre_id),
-                mois_concerne: `${form.mois_concerne}-01`,
-                montant: Number(form.montant),
-                observation: form.observation || null
-            }
+        const response =
+            await caisseSocialeService.createCotisationForSeance(
+                seanceId.value,
+                payload
+            );
+
+        console.log(
+            "Cotisation sociale créée :",
+            response?.data
         );
 
-        router.push({
-            path: `/seances/${seance.value.id}/operations`,
-            query: {
-                etape: "3"
-            }
-        });
+        toast.success(
+            "Cotisation sociale enregistrée avec succès."
+        );
+
+        await router.push(successUrl.value);
     } catch (err) {
-        console.error(
-            "Erreur enregistrement cotisation sociale :",
-            err
-        );
+    const serverResponse = err?.response?.data || {};
 
-        formError.value =
-            err.response?.data?.message ||
-            "Impossible d'enregistrer la cotisation sociale.";
-    } finally {
-        saving.value = false;
-    }
+    console.error(
+        "Erreur enregistrement cotisation sociale :",
+        err
+    );
+
+    console.error(
+        "Réponse détaillée du serveur :",
+        JSON.stringify(
+            serverResponse,
+            null,
+            2
+        )
+    );
+
+    console.error(
+        "Statut HTTP :",
+        err?.response?.status
+    );
+
+    const message =
+        serverResponse.message ||
+        serverResponse.error ||
+        serverResponse.detail ||
+        serverResponse.sqlMessage ||
+        serverResponse.errors?.[0]?.msg ||
+        serverResponse.errors?.[0]?.message ||
+        err.message ||
+        "Impossible d’enregistrer la cotisation sociale.";
+
+    formError.value = message;
+    toast.error(message);
+} finally {
+    saving.value = false;
+}
 }
 
 onMounted(loadContext);
@@ -446,6 +655,13 @@ textarea {
     font: inherit;
 }
 
+input:disabled,
+select:disabled,
+textarea:disabled {
+    cursor: not-allowed;
+    background: #f1f5f9;
+}
+
 textarea {
     resize: vertical;
 }
@@ -497,6 +713,10 @@ textarea {
 .warning-box {
     background: #fffbeb;
     color: #92400e;
+}
+
+.state-card {
+    min-height: 8rem;
 }
 
 @media (max-width: 650px) {

@@ -83,16 +83,14 @@ exports.create = async (req, res, next) => {
             nom,
             prenom,
             email,
-            mot_de_passe
+            mot_de_passe,
+            role
         } = req.body;
 
         const motDePasseHash = await bcrypt.hash(
             mot_de_passe,
             12
         );
-
-        // Le rôle est imposé côté serveur.
-        const role = "AGENT_FID";
 
         const [result] = await promisePool.query(
             `
@@ -111,7 +109,9 @@ exports.create = async (req, res, next) => {
 
         return res.status(201).json({
             success: true,
-            message: "Compte agent créé avec succès",
+            message: role === "ADMINISTRATEUR"
+                ? "Compte administrateur créé avec succès"
+                : "Compte agent créé avec succès",
             utilisateur: {
                 id: result.insertId,
                 nom,
@@ -142,7 +142,7 @@ exports.update = async (req, res, next) => {
     try {
         const { nom, prenom, email, mot_de_passe } = req.body;
         const [existing] = await promisePool.query(
-            "SELECT id FROM utilisateurs WHERE id = ?",
+            "SELECT id, role FROM utilisateurs WHERE id = ?",
             [req.params.id]
         );
         if (existing.length === 0) {
@@ -152,8 +152,20 @@ exports.update = async (req, res, next) => {
             });
         }
 
+        const role = req.body.role ?? existing[0].role;
+        if (
+            Number(req.params.id) === Number(req.user.id) &&
+            role !== req.user.role
+        ) {
+            return res.status(422).json({
+                success: false,
+                message: "Vous ne pouvez pas modifier votre propre rôle"
+            });
+        }
+
         const values = [nom, prenom, email];
-        let sql = "UPDATE utilisateurs SET nom = ?, prenom = ?, email = ?";
+        let sql = "UPDATE utilisateurs SET nom = ?, prenom = ?, email = ?, role = ?";
+        values.push(role);
 
         if (mot_de_passe) {
             const motDePasseHash = await bcrypt.hash(mot_de_passe, 12);

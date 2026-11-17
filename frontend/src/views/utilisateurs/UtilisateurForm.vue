@@ -7,7 +7,7 @@
                 </router-link>
                 <h1>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                    {{ isEdit ? "Modifier un compte utilisateur" : "Nouveau compte Agent FID" }}
+                    {{ isEdit ? "Modifier un compte utilisateur" : "Nouveau compte utilisateur" }}
                 </h1>
             </div>
         </div>
@@ -97,6 +97,16 @@
                             <span class="strength-label">{{ strengthLabel }}</span>
                         </div>
                     </div>
+                    <div class="form-field form-field-full">
+                        <label for="role">Rôle du compte <span class="req">*</span></label>
+                        <select id="role" v-model="form.role" required>
+                            <option value="AGENT_FID">Agent FID</option>
+                            <option value="ADMINISTRATEUR">Administrateur</option>
+                        </select>
+                        <small class="field-hint">
+                            Le rôle détermine les autorisations accordées à cet utilisateur.
+                        </small>
+                    </div>
                 </div>
             </fieldset>
 
@@ -140,7 +150,8 @@ const form = reactive({
     nom: "",
     prenom: "",
     email: "",
-    mot_de_passe: ""
+    mot_de_passe: "",
+    role: "AGENT_FID"
 });
 
 const saving = ref(false);
@@ -177,6 +188,7 @@ async function loadUser() {
         form.nom = utilisateur.nom || "";
         form.prenom = utilisateur.prenom || "";
         form.email = utilisateur.email || "";
+        form.role = utilisateur.role || "AGENT_FID";
         userLoaded.value = true;
     } catch (e) {
         error.value = e.response?.data?.message || "Impossible de charger cet utilisateur.";
@@ -193,7 +205,8 @@ async function onSubmit() {
         const payload = {
             nom: form.nom,
             prenom: form.prenom,
-            email: form.email
+            email: form.email,
+            role: form.role
         };
         if (form.mot_de_passe) payload.mot_de_passe = form.mot_de_passe;
 
@@ -310,6 +323,25 @@ onMounted(loadUser);
     color: #1e293b;
     background: #fff;
     transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-field select {
+    width: 100%;
+    min-height: 2.65rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    color: #1e293b;
+    font: inherit;
+}
+.form-field select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.field-hint {
+    color: #64748b;
+    font-size: 0.75rem;
 }
 .form-field input:focus {
     outline: none;

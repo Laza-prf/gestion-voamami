@@ -18,10 +18,6 @@
                         Consultez les rapports des VOAMAMI qui vous sont affectes.
                     </template>
                 </p>
-
-                <span class="role-badge" :class="auth.isAdmin ? 'role-admin' : 'role-agent'">
-                    {{ auth.isAdmin ? "Administrateur" : "Agent FID" }}
-                </span>
             </div>
 
             <button
@@ -34,15 +30,7 @@
             </button>
         </header>
 
-        <div class="access-notice" :class="auth.isAdmin ? 'notice-admin' : 'notice-agent'">
-            <strong>{{ auth.isAdmin ? "Accès global" : "Accès limité à vos affectations" }}</strong>
-            <span v-if="auth.isAdmin">
-                Vous consultez les rapports de tous les VOAMAMI.
-            </span>
-            <span v-else>
-                Seuls les rapports liés à vos VOAMAMI affectés sont affichés.
-            </span>
-        </div>
+
 
         <div class="summary-grid">
             <article class="summary-card">
@@ -68,9 +56,6 @@
                     <option value="">Tous les types</option>
                     <option value="SEANCE">Séance</option>
                     <option value="CLOTURE_CYCLE">Clôture de cycle</option>
-                    <option value="EPARGNE">Épargne</option>
-                    <option value="CREDIT">Crédit</option>
-                    <option value="REMBOURSEMENT">Remboursement</option>
                 </select>
             </label>
 
@@ -110,14 +95,6 @@
         </div>
 
         <div v-else class="table-card">
-            <div class="table-header">
-                <div>
-                    <h2>
-                        {{ auth.isAdmin ? "Rapports de tous les VOAMAMI" : "Rapports de mes VOAMAMI" }}
-                    </h2>
-                    <p>{{ filteredReports.length }} résultat(s)</p>
-                </div>
-            </div>
 
             <div class="table-scroll">
                 <table>
@@ -233,9 +210,7 @@ function reportTypeLabel(type) {
     const labels = {
         SEANCE: "Séance",
         CLOTURE_CYCLE: "Clôture",
-        EPARGNE: "Épargne",
-        CREDIT: "Crédit",
-        REMBOURSEMENT: "Remboursement"
+        
     };
 
     return labels[type] || type || "Rapport";

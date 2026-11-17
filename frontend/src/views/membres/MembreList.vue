@@ -32,8 +32,8 @@
             </div>
 
             <div class="filter-group">
-                <select v-model="filterVoamami" class="filter-select" aria-label="Filtrer par VOAMAMI">
-                    <option :value="null">Tous les VOAMAMI</option>
+                <select v-model="filterVoamami" class="filter-select" :disabled="isAgentFid" aria-label="Filtrer par VOAMAMI">
+                    <option v-if="!isAgentFid" :value="null">Tous les VOAMAMI</option>
                     <option
                         v-for="v in voamamis"
                         :key="v.id"
@@ -108,15 +108,20 @@
 
                         <td class="cell-person">
                             <span class="person-name">{{ membre.nom }} {{ membre.prenom }}</span>
-                            <span class="person-meta">{{ membre.sexe || "—" }}</span>
+                            <span v-if="membre.sexe" class="person-meta">{{ membre.sexe }}</span>
+                            <span v-else class="table-placeholder" aria-label="Sexe non renseigné">—</span>
                         </td>
 
                         <td class="cell-voamami">
-                            <code class="code-badge">{{ membre.voamami_code }}</code>
-                            <span class="voamami-nom">{{ membre.voamami_nom }}</span>
+                            <code v-if="membre.voamami_code" class="code-badge">{{ membre.voamami_code }}</code>
+                            <span v-else class="table-placeholder" aria-label="VOAMAMI non renseigné">—</span>
+                            <span v-if="membre.voamami_nom" class="voamami-nom">{{ membre.voamami_nom }}</span>
                         </td>
 
-                        <td>{{ membre.telephone || "—" }}</td>
+                        <td>
+                            <span v-if="membre.telephone">{{ membre.telephone }}</span>
+                            <span v-else class="table-placeholder" aria-label="Téléphone non renseigné">—</span>
+                        </td>
 
                         <td>
                             <span :class="['role-badge', 'role-' + (membre.role_bureau || 'membre').toLowerCase()]">
@@ -132,10 +137,10 @@
                                 </span>
                                 <span class="cycle-meta">{{ membre.cycle_statut }}</span>
                             </template>
-                            <span v-else class="muted">Aucun</span>
+                            <span v-else class="table-placeholder" aria-label="Aucun cycle actif">—</span>
                         </td>
 
-                        <td class="text-right">{{ formatMoney(membre.solde_epargne) }}</td>
+                        <td>{{ formatMoney(membre.solde_epargne) }}</td>
 
                         <td>
                             <span :class="['badge', 'badge-' + (membre.actif ? 'actif' : 'inactif')]">
@@ -218,8 +223,10 @@ import membreService from "../../service/membre.service.js";
 import voamamiService from "../../service/voamami.service.js";
 import { useToast } from "../../composables/useToast.js";
 import ConfirmationDialog from "../../components/ConfirmationDialog.vue";
+import { useAssignedVoamami } from "../../composables/useAssignedVoamami.js";
 
 const toast = useToast();
+const { isAgentFid, assignedVoamamiId } = useAssignedVoamami();
 const membres = ref([]);
 const voamamis = ref([]);
 const loading = ref(true);
@@ -294,7 +301,7 @@ watch([searchQuery, filterVoamami, filterStatut, filterRole, pageSize], () => {
 
 function resetFilters() {
     searchQuery.value = "";
-    filterVoamami.value = null;
+    if (!isAgentFid.value) filterVoamami.value = null;
     filterStatut.value = null;
     filterRole.value = null;
 }
@@ -329,6 +336,9 @@ async function loadMembres() {
         ]);
         membres.value = membresRes.data.data ?? [];
         voamamis.value = voamamisRes.data.data ?? [];
+        if (isAgentFid.value) {
+            filterVoamami.value = assignedVoamamiId(voamamis.value);
+        }
     } catch (e) {
         console.error("Erreur chargement membres :", e.response?.data || e);
         error.value = e.response?.data?.message || "Erreur de chargement des membres";
@@ -368,7 +378,7 @@ onMounted(loadMembres);
     max-width: 1300px;
     margin: 0 auto;
     padding: 1.5rem;
-    font-family: "Poppins", sans-serif !important;
+    font-family: inherit;
     color: #1e293b;
 }
 
@@ -578,6 +588,13 @@ onMounted(loadMembres);
     font-size: 0.78rem;
     color: #94a3b8;
     margin-top: 0.1rem;
+}
+.table-placeholder {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+:global(html.dark .page .table-placeholder) {
+    color: #94a3b8;
 }
 
 /* ===== VOAMAMI cell ===== */

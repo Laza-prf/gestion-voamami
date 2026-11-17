@@ -83,7 +83,6 @@
                         <th>Membre</th>
                         <th>Type</th>
                         <th class="text-right">Montant</th>
-                        <th>Motif</th>
                         <th>Statut</th>
                         <th class="col-actions">Action</th>
                     </tr>
@@ -101,7 +100,6 @@
                             </span>
                         </td>
                         <td class="text-right td-bold">{{ money(p.montant) }}</td>
-                        <td class="td-motif">{{ p.motif || "—" }}</td>
                         <td>
                             <span :class="['badge', p.statut === 'PAYEE' ? 'badge-payee' : 'badge-impayee']">
                                 <span class="badge-dot"></span>
@@ -156,7 +154,7 @@ const returnLink = computed(() => {
     return {
         path: `/seances/${seanceId}/operations`,
         query: {
-            etape: "5",
+            etape: "6",
             ...(typeof route.query.verifie === "string"
                 ? { verifie: route.query.verifie }
                 : {})

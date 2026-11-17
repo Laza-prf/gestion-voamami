@@ -3,7 +3,9 @@
         <header class="page-header">
             <div>
                 <p class="eyebrow">Opérations solidaires</p>
+
                 <h1>Caisse sociale</h1>
+
                 <p class="muted">
                     Consultez les fonds sociaux et gérez les demandes d’aide
                     des VOAMAMI.
@@ -17,7 +19,7 @@
                     :disabled="loading"
                     @click="load"
                 >
-                    Actualiser
+                    {{ loading ? "Actualisation…" : "Actualiser" }}
                 </button>
 
                 <router-link
@@ -26,38 +28,60 @@
                 >
                     + Demander une aide
                 </router-link>
+
+                <router-link
+                    class="button secondary"
+                    to="/caisse-sociale/aides"
+                >
+                    Liste des aides
+                </router-link>
             </div>
         </header>
 
-        <p v-if="error" class="alert error">
+        <p
+            v-if="error"
+            class="alert error"
+            role="alert"
+        >
             {{ error }}
         </p>
 
-        <div v-if="loading" class="state-card">
+        <div
+            v-if="loading"
+            class="state-card"
+        >
             Chargement des caisses sociales…
         </div>
 
-        <div v-else class="cards">
+        <div
+            v-else
+            class="cards"
+        >
             <article
                 v-for="caisse in caisses"
-                :key="caisse.caisse_sociale_id"
+                :key="caisse.id || caisse.caisse_sociale_id || caisse.voamami_id"
                 class="card"
             >
                 <div class="card-top">
                     <span
                         :class="[
                             'badge',
-                            caisse.statut === 'ACTIVE'
+                            isActive(caisse)
                                 ? 'badge-active'
                                 : 'badge-inactive'
                         ]"
                     >
-                        {{ caisse.statut }}
+                        {{ caisse.statut || "INACTIVE" }}
                     </span>
-                    <strong>{{ caisse.voamami_code }}</strong>
+
+                    <strong>
+                        {{ caisse.voamami_code || "VOAMAMI" }}
+                    </strong>
                 </div>
 
-                <h2>{{ caisse.voamami_nom }}</h2>
+                <h2>
+                    {{ caisse.voamami_nom || "Groupe non renseigné" }}
+                </h2>
 
                 <dl>
                     <div>
@@ -92,21 +116,24 @@
                 <div class="card-actions">
                     <router-link
                         class="action aide"
-                        :to="`/caisse-sociale/${caisse.voamami_id}/aides`"
+                        :to="aidesUrl(caisse)"
                     >
-                        Demandes d’aide
+                        Voir les demandes
                     </router-link>
 
                     <router-link
                         class="action mouvement"
-                        :to="`/caisse-sociale/${caisse.voamami_id}/mouvements`"
+                        :to="mouvementsUrl(caisse)"
                     >
                         Mouvements sociaux
                     </router-link>
                 </div>
             </article>
 
-            <p v-if="!caisses.length" class="empty">
+            <p
+                v-if="caisses.length === 0"
+                class="empty"
+            >
                 Aucune caisse sociale disponible.
             </p>
         </div>
@@ -129,26 +156,98 @@ function money(value) {
     );
 }
 
+function isActive(caisse) {
+    return String(caisse?.statut || "").toUpperCase() === "ACTIVE";
+}
+
+function extractCaisses(response) {
+    const payload = response?.data;
+
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (Array.isArray(payload?.data)) {
+        return payload.data;
+    }
+
+    if (Array.isArray(payload?.caisses)) {
+        return payload.caisses;
+    }
+
+    if (Array.isArray(payload?.data?.caisses)) {
+        return payload.data.caisses;
+    }
+
+    if (Array.isArray(payload?.rows)) {
+        return payload.rows;
+    }
+
+    return [];
+}
+
+function getVoamamiId(caisse) {
+    return (
+        caisse?.voamami_id ??
+        caisse?.id_voamami ??
+        caisse?.voamamiId ??
+        null
+    );
+}
+
+function aidesUrl(caisse) {
+    const voamamiId = getVoamamiId(caisse);
+
+    return voamamiId
+        ? {
+              path: "/caisse-sociale/aides",
+              query: {
+                  voamamiId: String(voamamiId)
+              }
+          }
+        : "/caisse-sociale/aides";
+}
+
+
+function mouvementsUrl(caisse) {
+    const voamamiId = getVoamamiId(caisse);
+
+    return voamamiId
+        ? `/caisse-sociale/${voamamiId}/mouvements`
+        : "/caisse-sociale";
+}
+
 async function load() {
     loading.value = true;
     error.value = "";
 
     try {
-        const response = await caisseSocialeService.getAll();
-        const payload = response?.data;
+        const response =
+            await caisseSocialeService.getAll();
 
-        if (Array.isArray(payload?.data)) {
-            caisses.value = payload.data;
-        } else if (Array.isArray(payload)) {
-            caisses.value = payload;
-        } else {
-            caisses.value = [];
-        }
+        console.log(
+            "Réponse caisses sociales :",
+            response?.data
+        );
+
+        caisses.value = extractCaisses(response);
+
+        console.log(
+            "Caisses sociales extraites :",
+            caisses.value
+        );
     } catch (err) {
-        console.error("Erreur chargement caisse sociale :", err);
+        console.error(
+            "Erreur chargement caisse sociale :",
+            err
+        );
+
         error.value =
             err.response?.data?.message ||
+            err.message ||
             "Impossible de charger les caisses sociales.";
+
+        caisses.value = [];
     } finally {
         loading.value = false;
     }
@@ -166,7 +265,7 @@ onMounted(load);
 
 .page-header {
     display: flex;
-    align-items: end;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 1.5rem;
@@ -231,7 +330,7 @@ h1 {
 
 .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
     gap: 1rem;
 }
 
@@ -337,14 +436,20 @@ dd {
         flex-direction: column;
     }
 
-    .actions > * {
-        flex: 1;
+    .actions,
+    .card-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .actions > *,
+    .card-actions > * {
+        min-width: 0;
         text-align: center;
     }
 
-    .card-actions > * {
-        flex: 1;
-        text-align: center;
+    dl {
+        grid-template-columns: 1fr;
     }
 }
 </style>

@@ -1,14 +1,14 @@
 <template>
     <main class="auth-page">
         <section class="auth-card" aria-labelledby="forgot-title">
-            <div class="auth-brand">
-                <span class="brand-mark">V</span>
-                <span class="brand-name">VOAMAMI</span>
-            </div>
-
             <div class="auth-content">
-                <router-link to="/login" class="back-link">
-                    ← Retour à la connexion
+                <router-link
+                    to="/login"
+                    class="back-link"
+                    aria-label="Retour à la connexion"
+                    title="Retour à la connexion"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </router-link>
 
                 <div class="auth-heading">
@@ -75,10 +75,6 @@
                     Retour à la connexion
                 </router-link>
 
-                <p class="security-note">
-                    Pour votre sécurité, le système ne confirme jamais si une
-                    adresse e-mail existe dans l’application.
-                </p>
             </div>
         </section>
     </main>
@@ -133,7 +129,7 @@ async function submit() {
 }
 
 .auth-card {
-    width: min(100%, 980px);
+    width: min(100%, 620px);
     overflow: hidden;
     border: 1px solid #e2e8f0;
     border-radius: 1.25rem;
@@ -141,52 +137,27 @@ async function submit() {
     box-shadow: 0 24px 70px rgb(15 23 42 / 12%);
 }
 
-.auth-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 1.4rem 2.25rem;
-    background: #0f172a;
-    color: #fff;
-}
-
-.brand-mark {
-    display: inline-flex;
-    width: 2.2rem;
-    height: 2.2rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.65rem;
-    background: #2563eb;
-    font-weight: 800;
-}
-
-.brand-name {
-    font-size: 0.95rem;
-    font-weight: 750;
-    letter-spacing: 0.12em;
-}
-
 .auth-content {
-    max-width: 620px;
-    margin: 0 auto;
+    width: 100%;
     padding: 2rem clamp(1.25rem, 6vw, 5rem) 2.5rem;
 }
 
 .back-link {
-    display: inline-block;
-    margin-bottom: 2rem;
-    color: #2563eb;
-    font-size: 0.85rem;
-    font-weight: 650;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #64748b;
+    background: #f1f5f9;
     text-decoration: none;
+    transition: background 0.15s, color 0.15s;
 }
 
-.back-link:hover,
-.forgot-link:hover {
-    text-decoration: underline;
-}
-
+.back-link:hover { background: #e2e8f0; color: #1e293b; }
 .auth-heading {
     margin-bottom: 1.7rem;
 }
@@ -363,10 +334,6 @@ h1 {
         min-height: 100svh;
         border: 0;
         border-radius: 0;
-    }
-
-    .auth-brand {
-        padding: 1.25rem 1.5rem;
     }
 
     .auth-content {

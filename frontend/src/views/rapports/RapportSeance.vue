@@ -2,7 +2,9 @@
     <section class="page">
         <header class="page-header">
             <div>
-                <router-link to="/rapports" class="back-link">← Retour aux rapports</router-link>
+                <router-link to="/rapports" class="back-link" aria-label="Retour aux rapports">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </router-link>
                 <p class="eyebrow">Rapport de séance</p>
                 <h1 v-if="report">Séance S{{ report.numero_seance }}</h1>
                 <p v-if="report" class="subtitle">
@@ -11,9 +13,6 @@
                     · {{ formatDate(report.date_seance) }}
                 </p>
             </div>
-            <span v-if="report" :class="['badge', report.seance_statut === 'CLOTUREE' ? 'badge-closed' : 'badge-open']">
-                {{ report.seance_statut === "CLOTUREE" ? "Clôturée" : "Ouverte" }}
-            </span>
             <button
                 v-if="report"
                 type="button"
@@ -41,46 +40,6 @@
                 <article class="summary-card summary-balance"><span>Solde des mouvements</span><strong>{{ money(report.solde) }}</strong><small>Entrées {{ money(report.total_entrees) }} · Sorties {{ money(report.total_sorties) }}</small></article>
             </div>
 
-            <section class="table-card">
-                <h2>Présences ({{ number(report.total_presences) }} enregistrée(s))</h2>
-                <div v-if="!report.presences?.length" class="empty-state">Aucune présence n’a été saisie pour cette séance.</div>
-                <div v-else class="table-scroll">
-                    <table>
-                        <thead><tr><th>N° membre</th><th>Membre</th><th>Statut</th><th>Observation</th></tr></thead>
-                        <tbody>
-                            <tr v-for="item in report.presences" :key="`${item.numero_membre}-${item.statut}`">
-                                <td>{{ item.numero_membre }}</td>
-                                <td>{{ fullName(item) }}</td>
-                                <td>{{ presenceLabel(item.statut) }}</td>
-                                <td>{{ item.observation || "—" }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section v-for="section in operationSections" :key="section.key" class="table-card">
-                <h2>{{ section.title }} ({{ report[section.key]?.length || 0 }})</h2>
-                <div v-if="!report[section.key]?.length" class="empty-state">Aucune opération.</div>
-                <div v-else class="table-scroll">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Membre</th>
-                                <th v-for="column in section.columns" :key="column.label">{{ column.label }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(item, index) in report[section.key]" :key="item.id || `${item.numero_membre}-${index}`">
-                                <td>{{ fullName(item) }}</td>
-                                <td v-for="column in section.columns" :key="column.label">
-                                    {{ column.format ? column.format(item[column.key]) : (item[column.key] || "—") }}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
         </template>
     </section>
 </template>

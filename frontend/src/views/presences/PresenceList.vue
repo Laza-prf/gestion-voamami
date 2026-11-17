@@ -167,10 +167,14 @@ const loading = ref(true);
 const savingAll = ref(false);
 const error = ref("");
 const seanceId = computed(() => Number(route.params.seanceId) || null);
+const returnStep = computed(() => {
+    const value = Number(route.query.etape);
+    return Number.isInteger(value) && value >= 0 && value <= 6 ? String(value) : "0";
+});
 const reviewReturnLink = computed(() => ({
     path: `/seances/${seanceId.value}/operations`,
     query: {
-        etape: route.query.etape === "5" ? "5" : "0",
+        etape: returnStep.value,
         ...(typeof route.query.verifie === "string"
             ? { verifie: route.query.verifie }
             : {})

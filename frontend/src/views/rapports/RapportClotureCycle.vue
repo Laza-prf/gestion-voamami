@@ -2,12 +2,14 @@
     <section class="page">
         <header class="page-header">
             <div>
-                <router-link to="/rapports" class="back-link">← Retour aux rapports</router-link>
+                <router-link to="/rapports" class="back-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>        
+                </router-link>
                 <p class="eyebrow">Rapport de clôture</p>
                 <h1 v-if="report">Cycle {{ report.numero_cycle }}</h1>
                 <p v-if="report" class="subtitle">{{ report.voamami_code }} — {{ report.voamami_nom }}</p>
             </div>
-            <span v-if="report" class="status-badge">{{ report.statut }}</span>
+           
             <button
                 v-if="report"
                 type="button"
@@ -35,48 +37,6 @@
                 <article class="summary-card"><span>Pénalités encaissées</span><strong>{{ money(report.total_penalites) }}</strong></article>
                 <article class="summary-card summary-balance"><span>Solde de caisse</span><strong>{{ money(report.solde_caisse) }}</strong></article>
             </div>
-
-            <section class="table-card">
-                <header class="table-heading">
-                    <div>
-                        <h2>Partage des bénéfices par membre</h2>
-                        <p>{{ report.partage?.length || 0 }} membre(s)</p>
-                    </div>
-                </header>
-                <div v-if="!report.partage?.length" class="empty-state">
-                    Aucun partage n’est disponible pour ce cycle.
-                </div>
-                <div v-else class="table-scroll">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>N°</th>
-                                <th>Membre</th>
-                                <th>Capital</th>
-                                <th>Part des intérêts</th>
-                                <th>Part des pénalités</th>
-                                <th>Total partagé</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="item in report.partage" :key="item.id">
-                                <td>{{ item.numero_membre }}</td>
-                                <td>{{ fullName(item) }}</td>
-                                <td>{{ money(item.capital_membre) }}</td>
-                                <td>{{ money(item.part_interets) }}</td>
-                                <td>{{ money(item.part_penalites) }}</td>
-                                <td class="total-cell">{{ money(item.montant_total_partage) }}</td>
-                            </tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <th colspan="5">Total distribué</th>
-                                <th>{{ money(totalPartage) }}</th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </section>
         </template>
     </section>
 </template>

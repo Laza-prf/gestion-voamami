@@ -57,7 +57,11 @@ router.post(
             .isLength({ min: 6 })
             .withMessage(
                 "Le mot de passe doit contenir au moins 6 caractères"
-            )
+            ),
+
+        body("role")
+            .isIn(["ADMINISTRATEUR", "AGENT_FID"])
+            .withMessage("Le rôle doit être Administrateur ou Agent FID")
     ],
     validationMiddleware,
     userController.create
@@ -72,6 +76,10 @@ router.put(
         body("nom").trim().notEmpty().withMessage("Le nom est requis"),
         body("prenom").trim().notEmpty().withMessage("Le prénom est requis"),
         body("email").trim().normalizeEmail().isEmail().withMessage("Email invalide"),
+        body("role")
+            .optional()
+            .isIn(["ADMINISTRATEUR", "AGENT_FID"])
+            .withMessage("Le rôle doit être Administrateur ou Agent FID"),
         body("mot_de_passe")
             .optional()
             .isLength({ min: 6 })

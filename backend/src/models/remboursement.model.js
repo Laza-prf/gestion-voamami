@@ -213,6 +213,7 @@ class Remboursement {
 
                 c.numero_cycle,
 
+                v.id AS voamami_id,
                 v.code AS voamami_code,
                 v.nom AS voamami_nom
 

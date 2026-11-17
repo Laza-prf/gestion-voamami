@@ -6,6 +6,7 @@ const authMiddleware = require("../middlewares/auth.middleware.js");
 const caisseSocialeController = require(
     "../controllers/caisse-sociale.controller.js"
 );
+const idempotency = require("../middlewares/idempotency.middleware.js");
 
 // Toutes les routes de caisse sociale nécessitent une authentification
 router.use(authMiddleware);
@@ -14,6 +15,12 @@ router.use(authMiddleware);
 router.get(
     "/",
     caisseSocialeController.list
+);
+
+// Demandes d’aide de toutes les caisses (filtrables par VOAMAMI)
+router.get(
+    "/aides",
+    caisseSocialeController.aides
 );
 
 // Une caisse sociale par VOAMAMI
@@ -31,6 +38,7 @@ router.get(
 // Ajouter une cotisation depuis la page caisse sociale
 router.post(
     "/:voamamiId/cotisations",
+    idempotency,
     caisseSocialeController.createCotisation
 );
 
@@ -43,6 +51,7 @@ router.get(
 // Créer une demande d'aide
 router.post(
     "/:voamamiId/aides",
+    idempotency,
     caisseSocialeController.createAide
 );
 
@@ -55,12 +64,14 @@ router.get(
 // Décider une demande : ADMINISTRATEUR dans le contrôleur
 router.patch(
     "/aides/:id/decision",
+    idempotency,
     caisseSocialeController.decideAide
 );
 
 // Payer une aide accordée
 router.patch(
     "/aides/:id/paiement",
+    idempotency,
     caisseSocialeController.payerAide
 );
 
@@ -72,6 +83,7 @@ router.get(
 router.post(
     "/seances/:seanceId/cotisations-sociales",
     authMiddleware,
+    idempotency,
     caisseSocialeController.createCotisationForSeance
 );
 

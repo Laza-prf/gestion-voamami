@@ -3,7 +3,7 @@
         <div class="page-header">
             <div>
                 <h1>Groupes VOAMAMI</h1>
-                <p class="subtitle">{{ voamami.length }} groupe(s) enregistré(s)</p>
+                <p class="subtitle">{{ filteredVoamami.length }} groupe(s) affiché(s) sur {{ voamami.length }}</p>
             </div>
             <router-link to="/voamami/nouveau" class="btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -24,15 +24,48 @@
             <button class="btn-secondary" @click="load">Réessayer</button>
         </div>
 
+        <div v-if="!loading && !error && voamami.length" class="toolbar">
+            <label class="search-box">
+                <span>Rechercher</span>
+                <input
+                    v-model.trim="searchQuery"
+                    type="search"
+                    placeholder="Code, nom, commune, région…"
+                    aria-label="Rechercher un groupe VOAMAMI"
+                />
+            </label>
+            <label>
+                Statut
+                <select v-model="statusFilter" aria-label="Filtrer par statut">
+                    <option value="">Tous les statuts</option>
+                    <option value="ACTIF">Actif</option>
+                    <option value="INACTIF">Inactif</option>
+                </select>
+            </label>
+            <button
+                v-if="searchQuery || statusFilter"
+                type="button"
+                class="btn-secondary"
+                @click="resetFilters"
+            >
+                Réinitialiser
+            </button>
+        </div>
+
         <!-- Empty -->
-        <div v-else-if="voamami.length === 0" class="state-block">
+        <div v-if="!loading && !error && voamami.length === 0" class="state-block">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
             <p>Aucun groupe enregistré.</p>
             <router-link to="/voamami/nouveau" class="btn-primary">Créer le premier groupe</router-link>
         </div>
 
         <!-- Table -->
-        <div v-else class="table-wrapper">
+        <div v-if="!loading && !error && voamami.length > 0 && filteredVoamami.length === 0" class="state-block">
+            <p>Aucun groupe ne correspond aux critères de recherche.</p>
+            <button class="btn-secondary" @click="resetFilters">Réinitialiser les filtres</button>
+        </div>
+
+        <div v-if="!loading && !error && filteredVoamami.length > 0" class="table-wrapper">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -48,7 +81,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(v, i) in voamami" :key="v.id" :class="{ 'row-even': i % 2 === 0 }">
+                    <tr v-for="(v, i) in filteredVoamami" :key="v.id" :class="{ 'row-even': i % 2 === 0 }">
                         <td><code class="code-badge">{{ v.code }}</code></td>
                         <td class="td-bold">{{ v.nom }}</td>
                         <td>{{ v.fokontany }}</td>
@@ -152,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import voamamiService from "../../service/voamami.service.js";
 import { useToast } from "../../composables/useToast.js";
 
@@ -161,6 +194,24 @@ const toast = useToast();
 const voamami = ref([]);
 const loading = ref(true);
 const error = ref("");
+const searchQuery = ref("");
+const statusFilter = ref("");
+const filteredVoamami = computed(() => {
+    const query = searchQuery.value.toLocaleLowerCase("fr");
+    return voamami.value.filter((item) => {
+        const searchable = [
+            item.code,
+            item.nom,
+            item.fokontany,
+            item.commune,
+            item.district,
+            item.region,
+            item.agent_responsable_nom
+        ].filter(Boolean).join(" ").toLocaleLowerCase("fr");
+        return (!query || searchable.includes(query)) &&
+            (!statusFilter.value || item.statut === statusFilter.value);
+    });
+});
 
 const showDeleteDialog = ref(false);
 const selectedVoamami = ref(null);
@@ -170,13 +221,18 @@ async function load() {
     error.value = "";
     try {
         const { data } = await voamamiService.getAll();
-        voamami.value = data.data;
+        voamami.value = data.data ?? [];
     } catch (e) {
         error.value = e.response?.data?.message || "Erreur de chargement";
         toast.error("Impossible de charger les groupes.");  // ← TOAST
     } finally {
         loading.value = false;
     }
+}
+
+function resetFilters() {
+    searchQuery.value = "";
+    statusFilter.value = "";
 }
 
 function askDelete(voamamiItem) {
@@ -248,6 +304,11 @@ onMounted(load);
     font-size: 0.85rem;
     color: #64748b;
 }
+.toolbar{display:flex;align-items:end;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.toolbar label{display:grid;gap:.35rem;color:#475569;font-size:.85rem;font-weight:600}
+.toolbar .search-box{flex:1;min-width:240px;max-width:460px}
+.toolbar input,.toolbar select{width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font:inherit}
+.toolbar input:focus,.toolbar select:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgb(37 99 235 / 12%)}
 
 /* ===== Buttons ===== */
 .btn-primary {
@@ -583,4 +644,3 @@ onMounted(load);
 }
 
 </style>
-

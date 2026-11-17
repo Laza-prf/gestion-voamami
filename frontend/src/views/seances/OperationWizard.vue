@@ -2,7 +2,9 @@
   <div class="page">
     <header class="page-header">
       <div class="header-left">
-        <router-link to="/seances" class="back-link">← Retour</router-link>
+        <router-link to="/seances" class="back-link" aria-label="Retour aux séances">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </router-link>
         <div>
           <h1>Assistant des opérations</h1>
           <p class="subtitle">
@@ -91,9 +93,9 @@ const isOpen = computed(() => seance.value?.statut === "OUVERTE");
 const canClose = computed(() => checkedItems.value.length === steps.length - 1 && checkedItems.value.every(Boolean) && !reviewLoading.value && !reviewError.value);
 
 const steps = [
-  { title: "Présences", description: "Enregistrez la présence ou l’absence de chaque membre.", actionTitle: "Feuille de présence", actionDescription: "Renseignez la présence de tous les membres.", actionLabel: "Saisir les présences", target: id => `/seances/${id}/presences?assistant=1`, listTarget: (id, v) => `/seances/${id}/presences?assistant=1&etape=6&verifie=${v}` },
+  { title: "Présences", description: "Enregistrez la présence ou l’absence de chaque membre.", actionTitle: "Feuille de présence", actionDescription: "Renseignez la présence de tous les membres.", actionLabel: "Saisir les présences", target: id => `/seances/${id}/presences?assistant=1&etape=1`, listTarget: (id, v) => `/seances/${id}/presences?assistant=1&etape=6&verifie=${v}` },
   { title: "Épargne", description: "Enregistrez les parts d’épargne collectées.", actionTitle: "Nouvelle épargne", actionDescription: "Choisissez le membre et le nombre de parts.", actionLabel: "Ajouter une épargne", target: id => `/epargnes/nouveau?seance_id=${id}&assistant=1`, listTarget: (id, v) => `/epargnes?seance_id=${id}&assistant=1&etape=6&verifie=${v}` },
-  { title: "Cotisations sociales", description: "Enregistrez les versements sociaux mensuels.", actionTitle: "Nouvelle cotisation sociale", actionDescription: "Le membre peut payer 1 000 Ar ou davantage, en un ou plusieurs versements.", actionLabel: "Ajouter une cotisation", target: id => `/caisse-sociale/cotisations/nouveau?seance_id=${id}&assistant=1`, listTarget: (id, v) => `/caisse-sociale/${id}/cotisations?assistant=1&etape=6&verifie=${v}` },
+  { title: "Cotisations", description: "Enregistrez les versements sociaux mensuels.", actionTitle: "Nouvelle cotisation sociale", actionDescription: "Le membre peut payer 1 000 Ar ou davantage, en un ou plusieurs versements.", actionLabel: "Ajouter une cotisation", target: id => `/caisse-sociale/cotisations/nouveau?seance_id=${id}&assistant=1`, listTarget: (id, v) => `/caisse-sociale/cotisations?seance_id=${id}&assistant=1&etape=6&verifie=${v}` },
   { title: "Crédits", description: "Enregistrez les crédits accordés.", actionTitle: "Nouveau crédit", actionDescription: "Saisissez le bénéficiaire et le montant.", actionLabel: "Ajouter un crédit", target: id => `/credits/nouveau?seance_id=${id}&assistant=1`, listTarget: (id, v) => `/credits?seance_id=${id}&assistant=1&etape=6&verifie=${v}` },
   { title: "Remboursements", description: "Enregistrez les remboursements reçus.", actionTitle: "Nouveau remboursement", actionDescription: "Sélectionnez le crédit et les montants.", actionLabel: "Ajouter un remboursement", target: id => `/remboursements/nouveau?seance_id=${id}&assistant=1`, listTarget: (id, v) => `/remboursements?seance_id=${id}&assistant=1&etape=6&verifie=${v}` },
   { title: "Pénalités", description: "Consultez et encaissez les pénalités de la séance.", actionTitle: "Nouvelle pénalité", actionDescription: "Sélectionnez le membre et le motif.", actionLabel: "Ajouter une pénalité", target: id => `/penalites/nouveau?seance_id=${id}&assistant=1`, listTarget: (id, v) => `/penalites?seance_id=${id}&assistant=1&etape=6&verifie=${v}` },
@@ -110,11 +112,160 @@ function reviewListTarget(index, id) { const verified = checkedItems.value.map(v
 async function loadReview() { if (!seanceId.value) return; reviewLoading.value = true; reviewError.value = ""; try { const responses = await Promise.all([presenceService.getAll({ seance_id: seanceId.value }), epargneService.getAll({ seance_id: seanceId.value }), caisseSocialeService.getCotisationsBySeance(seanceId.value), creditService.getAll({ seance_id: seanceId.value }), remboursementService.getAll({ seance_id: seanceId.value }), penaliteService.getAll({ seance_id: seanceId.value })]); reviewCounts.value = responses.map(unwrap).map(rows => rows.length); } catch (e) { reviewError.value = e.response?.data?.message || e.message || "Impossible de vérifier les opérations."; } finally { reviewLoading.value = false; } }
 async function loadPenalties() { if (!seanceId.value) return; penaltiesLoading.value = true; penaltiesError.value = ""; try { penalties.value = unwrap(await penaliteService.getAll({ seance_id: seanceId.value })); } catch (e) { penaltiesError.value = e.response?.data?.message || "Impossible de charger les pénalités."; } finally { penaltiesLoading.value = false; } }
 async function payPenalty(penalty) { if (payingPenaltyId.value || penalty.statut !== "IMPAYEE") return; payingPenaltyId.value = penalty.id; try { const response = await penaliteService.update(penalty.id, { statut: "PAYEE", motif: penalty.motif }); penalty.statut = response.data?.data?.statut || "PAYEE"; toast.success("Pénalité payée avec succès."); } catch (e) { penaltiesError.value = e.response?.data?.message || "Paiement impossible."; toast.error(penaltiesError.value); } finally { payingPenaltyId.value = null; } }
-async function closeSession() { closeError.value = ""; closing.value = true; try { await seanceService.close(seanceId.value, observation.value || null); seance.value.statut = "CLOTUREE"; toast.success("Séance clôturée avec succès."); } catch (e) { closeError.value = e.response?.data?.message || "Impossible de clôturer la séance."; toast.error(closeError.value); } finally { closing.value = false; } }
+async function closeSession() {
+  closeError.value = "";
+  closing.value = true;
+  try {
+    await seanceService.close(seanceId.value, observation.value || null);
+  } catch (e) {
+    closeError.value = e.response?.data?.message || "Impossible de clôturer la séance.";
+    toast.error(closeError.value);
+    closing.value = false;
+    return;
+  }
+
+  toast.success("Séance clôturée avec succès.");
+  try {
+    await router.push("/seances");
+  } finally {
+    closing.value = false;
+  }
+}
 watch(() => route.params.seanceId, load, { immediate: true });
 watch(step, value => { if (steps[value]?.title === "Pénalités" && seanceId.value) loadPenalties(); if (value === steps.length - 1 && seanceId.value) loadReview(); }, { immediate: true });
 </script>
 
 <style scoped>
 .page{max-width:1050px;margin:auto;padding:1.5rem;color:#1e293b}.page-header{display:flex;justify-content:space-between;gap:1rem;margin-bottom:1.25rem}.header-left{display:flex;gap:1rem;align-items:flex-start}.back-link{color:#2563eb;text-decoration:none}.subtitle,.muted{color:#64748b}.status-badge,.badge{border-radius:999px;padding:.35rem .75rem;font-size:.8rem;font-weight:700}.status-open{background:#dcfce7;color:#166534}.status-closed{background:#e2e8f0;color:#475569}.stepper{display:grid;grid-template-columns:repeat(7,1fr);gap:.25rem;margin:1.5rem 0}.step-marker{border:0;background:transparent;color:#94a3b8;font:inherit;cursor:pointer}.step-marker:disabled{cursor:default}.step-number{display:grid;width:2rem;height:2rem;margin:auto;place-items:center;border:2px solid #cbd5e1;border-radius:50%;background:#fff;font-weight:700}.step-marker.current{color:#1d4ed8}.step-marker.current .step-number{border-color:#2563eb;background:#2563eb;color:#fff}.step-marker.completed{color:#1d4ed8}.step-marker.completed .step-number{border-color:#2563eb;color:#2563eb}.step-label{display:block;margin-top:.4rem;font-size:.75rem}.step-card,.session-picker,.state-card{border:1px solid #e2e8f0;border-radius:1rem;background:#fff;padding:1.5rem;box-shadow:0 5px 18px #0f172a0a}.step-count,.eyebrow{color:#2563eb;font-size:.75rem;font-weight:800;letter-spacing:.08em}.action-card,.panel-heading{display:flex;justify-content:space-between;align-items:center;gap:1rem;border:1px solid #dbeafe;border-radius:.75rem;background:#f8fbff;padding:1.25rem}.button{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:.55rem;padding:.65rem 1rem;font:inherit;font-weight:650;text-decoration:none;cursor:pointer}.button:disabled{opacity:.5;cursor:not-allowed}.button-primary{background:#1e293b;color:#fff}.button-secondary{border:1px solid #cbd5e1;background:#fff;color:#334155}.button-danger{background:#b91c1c;color:#fff}.step-navigation{display:flex;justify-content:space-between;gap:.75rem;margin-top:1.5rem}.table-wrap{overflow:auto}.table-wrap table{width:100%;border-collapse:collapse;font-size:.875rem}.table-wrap th,.table-wrap td{padding:.7rem;border-top:1px solid #e2e8f0;text-align:left;white-space:nowrap}.review-list{margin-bottom:1.25rem;border:1px solid #e2e8f0;border-radius:.65rem;overflow:hidden}.review-row{display:flex;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid #e2e8f0}.review-row:last-child{border-bottom:0}.review-copy{display:flex;flex-direction:column;gap:.2rem}.review-copy small{color:#64748b}.review-actions{display:flex;align-items:center;gap:.55rem}.review-link{color:#2563eb;font-weight:600}.observation-label{display:block;margin:1rem 0 .4rem;font-weight:650}textarea{width:100%;padding:.7rem;border:1px solid #cbd5e1;border-radius:.5rem;resize:vertical;font:inherit}.review-error,.state-error{color:#b91c1c}.state-inline,.empty-state{padding:1rem 0;color:#64748b}.session-option{display:flex;justify-content:space-between;width:100%;margin-top:.6rem;padding:.9rem 1rem;border:1px solid #e2e8f0;border-radius:.65rem;background:#fff;text-align:left;cursor:pointer}.session-option span:first-child{display:flex;flex-direction:column;gap:.25rem}.session-option small{color:#64748b}.session-arrow{color:#2563eb;font-weight:650}@media(max-width:700px){.page{padding:1rem .25rem}.stepper{grid-template-columns:repeat(4,1fr);gap:1rem .25rem}.step-label{font-size:.68rem}.page-header,.action-card,.panel-heading,.review-row{align-items:flex-start;flex-direction:column}.step-navigation{align-items:stretch;flex-direction:column}.step-navigation .button{width:100%}.review-actions{flex-wrap:wrap}}
+
+:global(html.dark .page) {
+  color: #e5eaf2;
+}
+
+:global(html.dark .page-header h1),
+:global(html.dark .step-heading h2),
+:global(html.dark .session-picker h2),
+:global(html.dark .action-card strong),
+:global(html.dark .panel-heading h3),
+:global(html.dark .review-copy strong),
+:global(html.dark .observation-label) {
+  color: #e5eaf2;
+}
+
+:global(html.dark .step-card),
+:global(html.dark .session-picker),
+:global(html.dark .state-card) {
+  border-color: #2b374a;
+  background: #151e2e;
+  color: #e5eaf2;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 18%);
+}
+
+:global(html.dark .action-card),
+:global(html.dark .panel-heading) {
+  border-color: #2b4668;
+  background: #17263b;
+  color: #e5eaf2;
+}
+
+:global(html.dark .step-number) {
+  border-color: #475569;
+  background: #111a29;
+  color: #cbd5e1;
+}
+
+:global(html.dark .step-marker.current),
+:global(html.dark .step-marker.completed),
+:global(html.dark .step-count),
+:global(html.dark .eyebrow) {
+  color: #93c5fd;
+}
+
+:global(html.dark .step-marker.current .step-number) {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: #fff;
+}
+
+:global(html.dark .step-marker.completed .step-number) {
+  border-color: #60a5fa;
+  color: #93c5fd;
+}
+
+:global(html.dark .subtitle),
+:global(html.dark .muted),
+:global(html.dark .review-copy small),
+:global(html.dark .state-inline),
+:global(html.dark .empty-state),
+:global(html.dark .session-option small) {
+  color: #9aa8bb;
+}
+
+:global(html.dark .status-open) {
+  background: #123b31;
+  color: #86efac;
+}
+
+:global(html.dark .status-closed) {
+  background: #263449;
+  color: #cbd5e1;
+}
+
+:global(html.dark .button-secondary) {
+  border-color: #3b4960;
+  background: #1b2637;
+  color: #cbd5e1;
+}
+
+:global(html.dark .button-secondary:hover:not(:disabled)) {
+  background: #263449;
+}
+
+:global(html.dark .table-wrap th),
+:global(html.dark .table-wrap td),
+:global(html.dark .review-list),
+:global(html.dark .review-row) {
+  border-color: #2b374a;
+}
+
+:global(html.dark .table-wrap th) {
+  background: #111a29;
+  color: #cbd5e1;
+}
+
+:global(html.dark .table-wrap td),
+:global(html.dark .review-row) {
+  color: #e5eaf2;
+}
+
+:global(html.dark .review-list) {
+  background: #151e2e;
+}
+
+:global(html.dark .review-link),
+:global(html.dark .back-link),
+:global(html.dark .session-arrow) {
+  color: #93c5fd;
+}
+
+:global(html.dark textarea),
+:global(html.dark .session-option) {
+  border-color: #3b4960;
+  background: #111a29;
+  color: #e5eaf2;
+}
+
+:global(html.dark .session-option:hover) {
+  border-color: #60a5fa;
+  background: #17263b;
+}
+
+:global(html.dark .review-error),
+:global(html.dark .state-error) {
+  color: #fca5a5;
+}
+
+:global(html.dark .closed-notice) {
+  color: #fcd34d;
+}
 </style>

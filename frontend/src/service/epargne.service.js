@@ -13,6 +13,9 @@ export default {
     createMany(data) {
         return api.post("/epargnes", data);
     },
+    update(id, data) {
+        return api.put(`/epargnes/${id}`, data);
+    },
     remove(id) {
         return api.delete(`/epargnes/${id}`);
     }

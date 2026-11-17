@@ -15,6 +15,7 @@ const controller = require(
 const agentVoamamiScope = require(
     "../middlewares/agent-voamami-scope.middleware.js"
 );
+const idempotency = require("../middlewares/idempotency.middleware.js");
 
 const agentOuAdmin = requireRole(
     "ADMINISTRATEUR",
@@ -42,6 +43,7 @@ router.post(
     authMiddleware,
     agentOuAdmin,
     agentVoamamiScope,
+    idempotency,
     controller.create
 );
 
@@ -50,6 +52,7 @@ router.put(
     authMiddleware,
     agentOuAdmin,
     agentVoamamiScope,
+    idempotency,
     controller.update
 );
 

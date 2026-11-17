@@ -5,6 +5,17 @@ import AppLayout from "../components/layouts/AppLayout.vue";
 const routes = [
   { path: "/login", component: () => import("../views/auth/Login.vue") },
   {
+    path: "/offline-unlock",
+    name: "offline-unlock",
+    component: () => import("../views/auth/OfflineUnlock.vue")
+  },
+  {
+    path: "/offline-access",
+    name: "offline-access-setup",
+    component: () => import("../views/auth/OfflinePinSetup.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
     path: "/mot-de-passe-oublie",
     name: "mot-de-passe-oublie",
     component: () =>
@@ -22,15 +33,6 @@ const routes = [
         guestOnly: true
     }
 },
-{
-    path: "/changer-mot-de-passe",
-    name: "changer-mot-de-passe",
-    component: () =>
-        import("../views/auth/ChangerMotDePasse.vue"),
-    meta: {
-        requiresAuth: true
-    }
-},
   {
     path: "/",
     component: AppLayout,
@@ -38,6 +40,12 @@ const routes = [
     children: [
 
       { path: "", name: "dashboard", component: () => import("../views/dashboard/Dashboard.vue") },
+      {
+        path: "changer-mot-de-passe",
+        name: "changer-mot-de-passe",
+        component: () => import("../views/auth/ChangerMotDePasse.vue"),
+        meta: { requiresAuth: true }
+      },
       { path: "voamami", name: "voamami", component: () => import("../views/voamami/VoamamiList.vue"), meta: { requiresAuth: true, roles: ["ADMINISTRATEUR"] } },
       { path: "voamami/nouveau", name: "voamami-nouveau", component: () => import("../views/voamami/VoamamiForm.vue"), meta: { requiresAuth: true, roles: ["ADMINISTRATEUR"] } },
       { path: "voamami/:id/modifier", name: "voamami-modifier", component: () => import("../views/voamami/VoamamiForm.vue"), meta: { requiresAuth: true, roles: ["ADMINISTRATEUR"] } },
@@ -75,6 +83,19 @@ const routes = [
 {
     path: "/epargnes/nouveau",
     name: "epargne-nouveau",
+    component: () =>
+        import("../views/epargnes/EpargneForm.vue"),
+    meta: {
+        requiresAuth: true,
+        roles: [
+            "ADMINISTRATEUR",
+            "AGENT_FID"
+        ]
+    }
+},
+{
+    path: "/epargnes/:id/modifier",
+    name: "epargne-modifier",
     component: () =>
         import("../views/epargnes/EpargneForm.vue"),
     meta: {
@@ -255,8 +276,18 @@ const routes = [
     }
 },
 {
+    path: "/caisse-sociale/:voamamiId/mouvements",
+    name: "mouvements-caisse-sociale",
+    component: () =>
+        import("../views/caisse-sociale/MouvementsSociauxList.vue"),
+    meta: {
+        requiresAuth: true,
+        roles: ["ADMINISTRATEUR", "AGENT_FID"]
+    }
+},
+{
     path: "/caisse-sociale/aides/nouveau",
-    name: "aide-sociale-create",
+    name: "caisse-sociale-aide-nouveau",
     component: () =>
         import("../views/caisse-sociale/AideSocialeForm.vue"),
     meta: {
@@ -312,6 +343,29 @@ router.beforeEach((to) => {
 });
 
 function guardRoute(to, auth) {
+  if (
+    auth.isAdmin &&
+    (to.path === "/offline-access" || to.path === "/offline-unlock")
+  ) {
+    return "/";
+  }
+  if (
+    auth.offlineUnlockRequired &&
+    !navigator.onLine &&
+    to.path !== "/offline-unlock" &&
+    to.path !== "/login"
+  ) {
+    return "/offline-unlock";
+  }
+  if (auth.offlinePinSetupRequired && to.path !== "/offline-access") {
+    return "/offline-access";
+  }
+  if (
+    to.path === "/offline-unlock" &&
+    (!auth.offlineUnlockRequired || navigator.onLine)
+  ) {
+    return auth.isAuthenticated ? "/" : "/login";
+  }
   if (to.meta.requiresAuth && !auth.isAuthenticated) return "/login";
   if (to.meta.roles && !to.meta.roles.includes(auth.user?.role)) return "/"; // accès refusé
 }

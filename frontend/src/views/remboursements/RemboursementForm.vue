@@ -2,7 +2,7 @@
     <div class="page">
         <div class="page-header">
             <div class="header-left">
-                <router-link to="/seances" class="back-link" aria-label="Retour aux séances">
+                <router-link :to="cancelLink" class="back-link" aria-label="Retour">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </router-link>
                 <h1>
@@ -289,7 +289,7 @@ const loadError = ref("");
 const isAssistant = computed(() => route.query.assistant === "1");
 const cancelLink = computed(() =>
     isAssistant.value
-        ? `/seances/${form.seance_id}/operations?etape=3`
+        ? `/seances/${form.seance_id}/operations?etape=4`
         : "/seances"
 );
 const selectedRepaymentCount = computed(() =>
@@ -454,7 +454,7 @@ async function submit() {
                 entries
             });
             toast.success(response.data?.message || `${entries.length} remboursement(s) enregistré(s).`);
-            await router.push(`/seances/${form.seance_id}/operations?etape=3`);
+            await router.push(`/seances/${form.seance_id}/operations?etape=5`);
         } catch (e) {
             error.value = e.response?.data?.message || "Erreur lors de l'enregistrement groupé des remboursements.";
         } finally {
@@ -482,7 +482,7 @@ async function submit() {
         });
         toast.success(response.data?.message || "Remboursement enregistré avec succès.");
         if (route.query.assistant === "1") {
-            router.push(`/seances/${form.seance_id}/operations?etape=3`);
+            router.push(`/seances/${form.seance_id}/operations?etape=5`);
         } else {
             router.push({ path: "/remboursements", query: { seance_id: form.seance_id } });
         }

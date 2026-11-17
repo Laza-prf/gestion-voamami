@@ -15,6 +15,7 @@ const EpargneController = require(
 const agentVoamamiScope = require(
     "../middlewares/agent-voamami-scope.middleware.js"
 );
+const idempotency = require("../middlewares/idempotency.middleware.js");
 
 const roles = requireRole(
     "ADMINISTRATEUR",
@@ -42,7 +43,17 @@ router.post(
     authMiddleware,
     roles,
     agentVoamamiScope,
+    idempotency,
     EpargneController.create
+);
+
+router.put(
+    "/:id",
+    authMiddleware,
+    roles,
+    agentVoamamiScope,
+    idempotency,
+    EpargneController.update
 );
 
 router.delete(

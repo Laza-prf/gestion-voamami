@@ -4,6 +4,7 @@
             :mobile-nav-open="mobileNavOpen"
             @toggle-mobile-nav="mobileNavOpen = !mobileNavOpen"
         />
+        <OfflineStatus />
         <div class="app-body">
             <button
                 v-if="mobileNavOpen"
@@ -24,6 +25,7 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import Navbar from "../layouts/Navbar.vue";
 import Sidebar from "../layouts/Sidebar.vue";
+import OfflineStatus from "./OfflineStatus.vue";
 
 const mobileNavOpen = ref(false);
 

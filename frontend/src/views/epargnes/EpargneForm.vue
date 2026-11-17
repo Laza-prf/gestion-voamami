@@ -2,12 +2,12 @@
     <div class="page">
         <div class="page-header">
             <div class="header-left">
-                <router-link to="/seances" class="back-link" aria-label="Retour aux séances">
+                <router-link :to="cancelLink" class="back-link" aria-label="Retour">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </router-link>
                 <h1>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                    Nouvelle épargne
+                    {{ isEditing ? "Modifier l’épargne" : "Nouvelle épargne" }}
                 </h1>
             </div>
         </div>
@@ -61,7 +61,27 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         Épargne
                     </legend>
-                    <template v-if="isAssistant">
+                    <div v-if="isEditing" class="form-grid">
+                        <div class="form-field">
+                            <label>Membre</label>
+                            <input
+                                :value="editingEpargne ? `N°${editingEpargne.numero_membre} — ${editingEpargne.membre_nom} ${editingEpargne.membre_prenom || ''}` : ''"
+                                disabled
+                            />
+                        </div>
+                        <div class="form-field">
+                            <label for="nombre_parts">Nombre de parts <span class="req">*</span></label>
+                            <input
+                                id="nombre_parts"
+                                v-model.number="form.nombre_parts"
+                                type="number"
+                                min="1"
+                                max="5"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <template v-else-if="isAssistant">
                         <p class="form-hint">
                             Saisissez de 0 à 5 parts pour chaque membre présent. Les membres sans part saisie ne seront pas enregistrés.
                         </p>
@@ -71,7 +91,6 @@
                                     <tr>
                                         <th>N°</th>
                                         <th>Membre</th>
-                                        <th>Parts déjà enregistrées</th>
                                         <th>Parts à enregistrer</th>
                                     </tr>
                                 </thead>
@@ -79,7 +98,6 @@
                                     <tr v-for="row in savingsRows" :key="row.membre.id">
                                         <td>{{ row.membre.numero_membre }}</td>
                                         <td><strong>{{ row.membre.nom }} {{ row.membre.prenom || "" }}</strong></td>
-                                        <td>{{ row.alreadySavedParts || "—" }}</td>
                                         <td>
                                             <input
                                                 v-model.number="row.nombre_parts"
@@ -159,7 +177,7 @@
                     <button type="submit" class="btn btn-primary" :disabled="saving || !seance">
                         <svg v-if="saving" class="spinner-sm" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10" stroke-linecap="round"/></svg>
                         <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        {{ saving ? "Enregistrement…" : isAssistant ? "Enregistrer toutes les épargnes" : "Enregistrer l'épargne" }}
+                        {{ saving ? "Enregistrement…" : isEditing ? "Enregistrer les modifications" : isAssistant ? "Enregistrer toutes les épargnes" : "Enregistrer l'épargne" }}
                     </button>
                     <router-link :to="cancelLink" class="btn btn-ghost">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -188,15 +206,19 @@ const toast = useToast();
 const seance = ref(null);
 const membres = ref([]);
 const savingsRows = ref([]);
+const editingEpargne = ref(null);
 const loading = ref(true);
 const saving = ref(false);
 const error = ref("");
 const loadError = ref("");
-const isAssistant = computed(() => route.query.assistant === "1");
+const isEditing = computed(() => Number.isInteger(Number(route.params.id)) && Number(route.params.id) > 0);
+const isAssistant = computed(() => route.query.assistant === "1" && !isEditing.value);
 const cancelLink = computed(() =>
-    isAssistant.value
-        ? `/seances/${form.seance_id}/operations?etape=1`
-        : "/seances"
+    isEditing.value
+        ? { path: "/epargnes", query: { ...route.query, seance_id: String(form.seance_id || route.query.seance_id || "") } }
+        : isAssistant.value
+            ? `/seances/${form.seance_id}/operations?etape=1`
+            : "/seances"
 );
 const selectedSavingsCount = computed(() =>
     savingsRows.value.filter((row) => Number(row.nombre_parts) > 0).length
@@ -268,6 +290,16 @@ async function loadForm() {
     loading.value = true;
     loadError.value = "";
     try {
+        if (isEditing.value) {
+            const response = await epargneService.getById(route.params.id);
+            editingEpargne.value = response.data?.data ?? response.data;
+            if (!editingEpargne.value?.id) {
+                throw new Error("Épargne introuvable.");
+            }
+            form.seance_id = Number(editingEpargne.value.seance_id);
+            form.membre_id = Number(editingEpargne.value.membre_id);
+            form.nombre_parts = Number(editingEpargne.value.nombre_parts);
+        }
         await loadContext();
     } catch (e) {
         loadError.value = e.response?.data?.message || e.message || "Impossible de charger la séance.";
@@ -281,6 +313,25 @@ async function submit() {
 
     if (!seance.value) { error.value = "La séance est introuvable."; return; }
     if (seance.value.statut !== "OUVERTE") { error.value = "Cette séance est déjà clôturée."; return; }
+    if (isEditing.value) {
+        if (!Number.isInteger(Number(form.nombre_parts)) || Number(form.nombre_parts) < 1 || Number(form.nombre_parts) > 5) {
+            error.value = "Le nombre de parts doit être compris entre 1 et 5.";
+            return;
+        }
+        saving.value = true;
+        try {
+            const response = await epargneService.update(route.params.id, {
+                nombre_parts: Number(form.nombre_parts)
+            });
+            toast.success(response.data?.message || "Épargne modifiée avec succès.");
+            await router.push(cancelLink.value);
+        } catch (e) {
+            error.value = e.response?.data?.message || "Erreur lors de la modification de l'épargne.";
+        } finally {
+            saving.value = false;
+        }
+        return;
+    }
     if (isAssistant.value) {
         const invalidRow = savingsRows.value.find((row) =>
             !Number.isInteger(Number(row.nombre_parts)) ||
@@ -309,7 +360,7 @@ async function submit() {
                 entries
             });
             toast.success(response.data?.message || `${entries.length} épargne(s) enregistrée(s).`);
-            await router.push(`/seances/${form.seance_id}/operations?etape=1`);
+            await router.push(`/seances/${form.seance_id}/operations?etape=2`);
         } catch (e) {
             error.value = e.response?.data?.message || "Erreur lors de l'enregistrement groupé des épargnes.";
         } finally {
@@ -333,7 +384,7 @@ async function submit() {
         const response = await epargneService.create(payload);
         toast.success(response.data?.message || "Épargne enregistrée avec succès.");
         if (route.query.assistant === "1") {
-            router.push(`/seances/${form.seance_id}/operations?etape=1`);
+            router.push(`/seances/${form.seance_id}/operations?etape=2`);
         } else {
             router.push({ path: "/epargnes", query: { seance_id: form.seance_id } });
         }

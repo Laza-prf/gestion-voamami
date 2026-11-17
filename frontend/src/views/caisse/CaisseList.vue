@@ -19,8 +19,8 @@
         <div class="toolbar">
             <div class="filter-group">
                 <div class="select-wrapper">
-                    <select v-model="filters.voamami_id" class="filter-select filter-select-main" aria-label="VOAMAMI" @change="onVoamamiChange">
-                        <option value="">— Sélectionner un VOAMAMI —</option>
+                    <select v-model="filters.voamami_id" class="filter-select filter-select-main" :disabled="isAgentFid" aria-label="VOAMAMI" @change="onVoamamiChange">
+                        <option v-if="!isAgentFid" value="">— Sélectionner un VOAMAMI —</option>
                         <option v-for="v in voamamis" :key="v.id" :value="String(v.id)">
                             {{ v.code }} — {{ v.nom }}
                         </option>
@@ -191,8 +191,10 @@ import mouvementCaisseService from "../../service/mouvement-caisse.service.js";
 import voamamiService from "../../service/voamami.service.js";
 import cycleService from "../../service/cycle.service.js";
 import seanceService from "../../service/seance.service.js";
+import { useAssignedVoamami } from "../../composables/useAssignedVoamami.js";
 
 const route = useRoute();
+const { isAgentFid, assignedVoamamiId } = useAssignedVoamami();
 const voamamis = ref([]);
 const cycles = ref([]);
 const seances = ref([]);
@@ -312,6 +314,10 @@ onMounted(async () => {
     try {
         const res = await voamamiService.getAll();
         voamamis.value = res.data.data ?? res.data.voamamis ?? res.data ?? [];
+        if (isAgentFid.value) {
+            const assignedId = assignedVoamamiId(voamamis.value);
+            filters.voamami_id = assignedId == null ? "" : String(assignedId);
+        }
         if (filters.voamami_id) {
             await loadCyclesAndSeances();
             await loadAll();

@@ -3,7 +3,7 @@
         <div class="page-header">
             <div>
                 <h1>Cycles d'épargne et de crédit</h1>
-                <p class="subtitle">{{ cycles.length }} cycle(s) enregistré(s)</p>
+                <p class="subtitle">{{ filteredCycles.length }} cycle(s) affiché(s) sur {{ cycles.length }}</p>
             </div>
             <router-link to="/cycles/nouveau" class="btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -24,15 +24,39 @@
             <button class="btn-secondary" @click="load">Réessayer</button>
         </div>
 
+        <div v-if="!loading && !error && cycles.length" class="filters">
+            <label>
+                VOAMAMI
+                <select v-model="filterVoamami" :disabled="isAgentFid" aria-label="Filtrer par VOAMAMI">
+                    <option v-if="!isAgentFid" :value="null">Tous les VOAMAMI</option>
+                    <option v-for="voamami in voamamis" :key="voamami.id" :value="Number(voamami.id)">
+                        {{ voamami.code }} — {{ voamami.nom }}
+                    </option>
+                </select>
+            </label>
+            <button
+                v-if="!isAgentFid && filterVoamami"
+                type="button"
+                class="btn-secondary"
+                @click="filterVoamami = null"
+            >
+                Effacer le filtre
+            </button>
+        </div>
+
         <!-- Empty -->
-        <div v-else-if="cycles.length === 0" class="state-block">
+        <div v-if="!loading && !error && cycles.length === 0" class="state-block">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
             <p>Aucun cycle enregistré.</p>
             <router-link to="/cycles/nouveau" class="btn-primary">Créer le premier cycle</router-link>
         </div>
 
         <!-- Table -->
-        <div v-else class="table-wrapper">
+        <div v-if="!loading && !error && cycles.length > 0 && filteredCycles.length === 0" class="state-block">
+            <p>Aucun cycle ne correspond à ce VOAMAMI.</p>
+        </div>
+
+        <div v-if="!loading && !error && filteredCycles.length > 0" class="table-wrapper">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -42,13 +66,12 @@
                         <th>Fin prévue</th>
                         <th class="text-right">Part épargne</th>
                         <th class="text-right">Taux</th>
-                        <th class="text-right">Durée</th>
                         <th>Statut</th>
                         <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(cycle, i) in cycles" :key="cycle.id" :class="{ 'row-even': i % 2 === 0 }">
+                    <tr v-for="(cycle, i) in filteredCycles" :key="cycle.id" :class="{ 'row-even': i % 2 === 0 }">
                         <!-- VOAMAMI -->
                         <td class="cell-voamami">
                             <code class="code-badge">{{ cycle.voamami_code || "—" }}</code>
@@ -63,13 +86,11 @@
                         <td>{{ formatDate(cycle.date_fin_prevue) }}</td>
 
                         <!-- Montant -->
-                        <td class="text-right">{{ formatMontant(cycle.montant_part_epargne) }}</td>
+                        <td>{{ formatMontant(cycle.montant_part_epargne) }}</td>
 
                         <!-- Taux -->
-                        <td class="text-right">{{ cycle.taux_interet }} %</td>
+                        <td>{{ cycle.taux_interet }} %</td>
 
-                        <!-- Durée -->
-                        <td class="text-right">{{ cycle.duree_credit_mois }} mois</td>
 
                         <!-- Statut -->
                         <td>
@@ -193,16 +214,26 @@
     </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import cycleService from "../../service/cycle.service.js";
+import voamamiService from "../../service/voamami.service.js";
+import { useAssignedVoamami } from "../../composables/useAssignedVoamami.js";
 import { useToast } from "../../composables/useToast.js";
 import ConfirmationDialog from "../../components/ConfirmationDialog.vue";
 
 const toast = useToast();
 const router = useRouter();
+const { isAgentFid, assignedVoamamiId } = useAssignedVoamami();
 
 const cycles = ref([]);
+const voamamis = ref([]);
+const filterVoamami = ref(null);
+const filteredCycles = computed(() =>
+    filterVoamami.value
+        ? cycles.value.filter((cycle) => Number(cycle.voamami_id) === Number(filterVoamami.value))
+        : cycles.value
+);
 const loading = ref(true);
 const error = ref("");
 
@@ -237,8 +268,13 @@ async function load() {
     error.value = "";
 
     try {
-        const { data } = await cycleService.getAll();
-        cycles.value = data.data ?? [];
+        const [cyclesResponse, voamamisResponse] = await Promise.all([
+            cycleService.getAll(),
+            voamamiService.getAll()
+        ]);
+        cycles.value = cyclesResponse.data.data ?? [];
+        voamamis.value = voamamisResponse.data.data ?? [];
+        filterVoamami.value = assignedVoamamiId(voamamis.value);
     } catch (e) {
         console.error(
             "Erreur liste cycles :",
@@ -351,6 +387,10 @@ onMounted(load);
     font-size: 0.85rem;
     color: #64748b;
 }
+.filters{display:flex;align-items:end;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap}
+.filters label{display:grid;gap:.35rem;color:#475569;font-size:.85rem;font-weight:600}
+.filters select{min-width:240px;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155}
+.filters select:disabled{background:#f1f5f9;color:#475569;opacity:1}
 
 /* ===== Buttons ===== */
 .btn-primary {

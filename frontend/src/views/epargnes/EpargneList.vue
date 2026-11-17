@@ -37,8 +37,8 @@
 
             <div class="filter-group">
                 <div class="select-wrapper">
-                    <select v-model="filterVoamami" class="filter-select" aria-label="Filtrer par VOAMAMI">
-                        <option :value="null">Tous les VOAMAMI</option>
+                    <select v-model="filterVoamami" class="filter-select" :disabled="isAgentFid" aria-label="Filtrer par VOAMAMI">
+                        <option v-if="!isAgentFid" :value="null">Tous les VOAMAMI</option>
                         <option v-for="v in voamamis" :key="v.id" :value="v.id">{{ v.code }}</option>
                     </select>
                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -92,10 +92,9 @@
                         <th>VOAMAMI</th>
                         <th>Séance</th>
                         <th class="text-center">Parts</th>
-                        <th class="text-right">Montant/part</th>
                         <th class="text-right">Total</th>
                         <th>Date</th>
-                        <th class="col-actions">Action</th>
+                        <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -104,10 +103,17 @@
                         <td><code class="code-badge">{{ item.voamami_code || "—" }}</code></td>
                         <td>S{{ item.numero_seance }}</td>
                         <td class="text-center">{{ item.nombre_parts }}</td>
-                        <td class="text-right">{{ money(item.montant_part) }}</td>
                         <td class="text-right td-bold">{{ money(item.montant_total) }}</td>
                         <td>{{ date(item.date_epargne) }}</td>
                         <td class="col-actions">
+                            <router-link
+                                :to="editLink(item)"
+                                class="icon-btn icon-btn-edit"
+                                title="Modifier"
+                                :aria-label="`Modifier l’épargne de ${item.membre_nom} ${item.membre_prenom || ''}`"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+                            </router-link>
                             <button class="icon-btn icon-btn-delete" title="Supprimer" aria-label="Supprimer" @click="remove(item.id)">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                             </button>
@@ -136,9 +142,11 @@ import voamamiService from "../../service/voamami.service.js";
 import seanceService from "../../service/seance.service.js";
 import { useToast } from "../../composables/useToast.js";
 import ConfirmationDialog from "../../components/ConfirmationDialog.vue";
+import { useAssignedVoamami } from "../../composables/useAssignedVoamami.js";
 
 const toast = useToast();
 const route = useRoute();
+const { isAgentFid, assignedVoamamiId } = useAssignedVoamami();
 const returnLink = computed(() => {
     const seanceId = route.query.seance_id;
     if (route.query.assistant !== "1" || typeof seanceId !== "string") {
@@ -147,7 +155,7 @@ const returnLink = computed(() => {
     return {
         path: `/seances/${seanceId}/operations`,
         query: {
-            etape: "5",
+            etape: "6",
             ...(typeof route.query.verifie === "string"
                 ? { verifie: route.query.verifie }
                 : {})
@@ -174,6 +182,15 @@ const newLink = computed(() => ({
     path: "/epargnes/nouveau",
     query: route.query.seance_id ? { seance_id: route.query.seance_id } : {}
 }));
+function editLink(item) {
+    return {
+        path: `/epargnes/${item.id}/modifier`,
+        query: {
+            ...route.query,
+            seance_id: String(item.seance_id)
+        }
+    };
+}
 
 // Filtered items
 const filteredItems = computed(() => {
@@ -203,7 +220,7 @@ watch([searchQuery, filterVoamami, filterSeance], () => {});
 
 function resetFilters() {
     searchQuery.value = "";
-    filterVoamami.value = null;
+    if (!isAgentFid.value) filterVoamami.value = null;
     filterSeance.value = null;
 }
 
@@ -233,6 +250,9 @@ async function load() {
         ]);
         items.value = epRes.data.data ?? [];
         voamamis.value = voaRes.data.data ?? [];
+        if (isAgentFid.value) {
+            filterVoamami.value = assignedVoamamiId(voamamis.value);
+        }
         seances.value = (seaRes.data.data ?? seaRes.data.seances ?? []).slice(0, 50);
     } catch (e) {
         error.value = e.response?.data?.message || "Erreur de chargement.";
@@ -506,7 +526,7 @@ onMounted(load);
 }
 
 /* ===== Actions ===== */
-.col-actions { width: 50px; text-align: right; }
+.col-actions { width: 90px; text-align: right; white-space: nowrap; }
 .icon-btn {
     display: inline-flex;
     align-items: center;
@@ -518,10 +538,18 @@ onMounted(load);
     cursor: pointer;
     transition: all 0.15s;
 }
+.col-actions .icon-btn + .icon-btn { margin-left: 0.35rem; }
 .icon-btn-delete {
     color: #dc2626;
     background: #fef2f2;
     border-color: #fecaca;
 }
 .icon-btn-delete:hover { background: #fee2e2; border-color: #fca5a5; }
+.icon-btn-edit {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    text-decoration: none;
+}
+.icon-btn-edit:hover { background: #dbeafe; border-color: #93c5fd; }
 </style>
